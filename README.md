@@ -32,3 +32,5 @@ pip install -U -R requirements.txt
 ## Warning(s)
 This is provided as is, see the LICENSE file.
 
+## References
+- https://github.com/alichnewsky/covid
