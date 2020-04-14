@@ -1,9 +1,9 @@
 # Simple python scripts to work with COVID-19 / SARS-cov-19 data provided by Santé publique France
 
-https://www.data.gouv.fr/fr/datasets/donnees-hospitalieres-relatives-a-lepidemie-de-covid-19/
-https://www.data.gouv.fr/en/datasets/donnees-des-urgences-hospitalieres-et-de-sos-medecins-relatives-a-lepidemie-de-covid-19/
+The data sources used are located:
+- https://www.data.gouv.fr/fr/datasets/donnees-hospitalieres-relatives-a-lepidemie-de-covid-19/
+- https://www.data.gouv.fr/en/datasets/donnees-des-urgences-hospitalieres-et-de-sos-medecins-relatives-a-lepidemie-de-covid-19/
 
-basic script to work with the [Novel Coronavirus (COVID-19) cases dataset provided by JHU CSSE](https://systems.jhu.edu/research/public-health/ncov/)
 
 Mostly this consists of jupyter notebook(s), while python scripts are also provided
 almost direct transpositions of the notebooks.
@@ -21,6 +21,7 @@ access to the data for testing personal "what-if" hypotheses.
 
 ![First example](./JupySessions/images/Chap01/FIG002.png)
 ![Second example](./JupySessions/images/Chap01/FIG003.jpg)
+![Third example](./JupySessions/images/Chap01/FIG004.jpg)
 
 ## install requirements
 ### Python
@@ -37,4 +38,5 @@ pip install -U -R requirements.txt
 This is provided as is, see the LICENSE file.
 
 ## References
-- https://github.com/alichnewsky/covid
+- https://github.com/alichnewsky/covid : basic script to work with the Novel Coronavirus (COVID-19) cases 
+      dataset provided by JHU CSSE
