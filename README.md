@@ -17,6 +17,10 @@ https://www.data.gouv.fr/en/datasets/donnees-des-urgences-hospitalieres-et-de-so
 however this is a very straightforward piece of code, intended mostly to facilitate
 access to the data for testing personal "what-if" hypotheses.
 
+## Gallery
+
+![First example](./JupySessions/images/Chap01/FIG002.png)
+![Second example](./JupySessions/images/Chap01/FIG003.jpg)
 
 ## install requirements
 ### Python
