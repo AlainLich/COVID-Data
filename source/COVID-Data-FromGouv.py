@@ -4,15 +4,12 @@
 # #  Simple tool to analyze data from www.data.gouv.fr
 # 
 # 
-# ## Web Sources
-# https://www.data.gouv.fr/en/datasets/donnees-des-urgences-hospitalieres-et-de-sos-medecins-relatives-a-lepidemie-de-covid-19/
 # 
-# https://www.data.gouv.fr/fr/datasets/donnees-hospitalieres-relatives-a-lepidemie-de-covid-19/
 # 
 
 # # Libraries
 
-# In[ ]:
+# In[27]:
 
 
 # Sys import
@@ -26,6 +23,7 @@ from scipy import linalg
 
 # Better formatting functions
 from IPython.display import display, HTML
+from IPython import get_ipython
 
 import matplotlib        as MPL
 import matplotlib.pyplot as PLT
@@ -42,7 +40,7 @@ import pandas as PAN
 import xlrd
 
 
-# In[ ]:
+# In[2]:
 
 
 import warnings
@@ -50,25 +48,26 @@ warnings.filterwarnings('ignore')
 print("For now, reduce python warnings, I will look into this later")
 
 
-# ##  Save figures
+# ### Import my own stuff
+# The next cell attempts to give user some information if things improperly setup.
+# Intended to work both in Jupyter and when executing the Python file directly.
 
-# In[ ]:
+# In[26]:
 
 
-class ImageMgr(object):
-    def __init__(self, rootdir=".", chapdir="DefaultChap", imgtype="jpg"):
-       
-         self.PROJECT_ROOT_DIR = rootdir
-         self.CHAPTER_ID=chapdir
-         self.imgtype="."+imgtype
-            
-    def save_fig(self, fig_id, tight_layout=True):
-       "Save the current figure"
-       path = os.path.join(self.PROJECT_ROOT_DIR, "images", self.CHAPTER_ID, fig_id + self.imgtype)
-       print("Saving figure", fig_id)
-       if tight_layout:
-          PLT.tight_layout()
-       PLT.savefig(path, format='png', dpi=300)
+if not get_ipython() is None and os.path.abspath("../source/") not in sys.path:
+    sys.path.append(os.path.abspath("../source/"))
+try:
+    from lib.utilities     import *
+    from lib.figureHelpers import *
+    from lib.DataGouvFr    import *
+except Exception as err:
+    print("Could not find library 'lib' with contents 'DataGouvFr' ")
+    if get_ipython() is None:
+        print("Check the PYTHONPATH environment variable should point to 'source' wich contains 'lib'")
+    else:
+        print("You are supposed to be running in JupySessions, and '../source' should exist")
+    raise err
 
 
 # ## Check environment
@@ -80,26 +79,6 @@ class ImageMgr(object):
 # In[ ]:
 
 
-def checkSetup(chap = None):
-    cwd = os.getcwd()
-    dp, dir = os.path.split(cwd)
-    if ( dir != 'JupySessions'):
-       raise(RuntimeError("Installation incorrect, check that this executes in 'JupySessions' "))
-    # Check subdirectory f'JupySessions/images/{chap}'
-    if chap:
-        img = os.path.join(dp,  'JupySessions', 'images', chap)
-        if (not os.path.exists( img)):
-          raise(RuntimeError("Installation incorrect, check that image dir exists at '%s'" % img ))
-    # now check that the expected subdirectories are where expected
-    for d in ('data','source'):
-       ddir = os.path.join(dp,  d)
-       if (not os.path.exists( ddir)):
-          raise(RuntimeError("Installation incorrect, check that  dir '%s' exists at '%s'" % (d,ddir )))
-
-
-# In[ ]:
-
-
 checkSetup(chap="Chap01")
 ImgMgr = ImageMgr(chapdir="Chap01")
 
@@ -107,179 +86,6 @@ ImgMgr = ImageMgr(chapdir="Chap01")
 # # Load Data
 
 # ## Functions
-
-# In[ ]:
-
-
-def read_csvPandas(fname,clearNaN=False, **kwargs):
-    """ Read a csv file, all keywords arguments permitted for pandas.read_csv 
-        will be honored
-    """
-    df = PAN.read_csv(fname,**kwargs)
-    if clearNaN:
-        return df.dropna(how="all").dropna(axis=1)
-    return df
-
-
-# In[ ]:
-
-
-def read_xlsxPandas(fname,clearNaN=False, **kwargs):
-    """ Read a xlsx file, all keywords arguments permitted for pandas.read_csv 
-        will be honored
-    """
-    df = PAN.read_excel(fname,**kwargs)
-    if clearNaN:
-        return df.dropna(how="all").dropna(axis=1)
-    return df
-
-
-# In[ ]:
-
-
-class manageDataFileVersions(object):
-    """ For each file name in directory, find which are different versions of same as 
-        indicated in the file name with pattern yyyy-mm-dd-HHhMM, 
-    """
-    def __init__(self, dirpath="../data"):
-        "dirpath is path relative current working directory"
-        self.dirpath = dirpath
-        if not os.path.isdir(dirpath):
-            raise RuntimeError(f"Path {dirpath} not directory")
-        self._walk()
-    datedFileRex = re.compile("""^(?P<hdr>.*[^\d])
-    (?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+)  # Year
-    -(?P<hour>\d+)h(?P<minute>\d+)             # Time
-    (?P<ftr>.*)$""", re.VERBOSE)    
-    
-    def _walk(self):
-        lfiles = os.listdir(self.dirpath)
-        filDir={}
-        genDir={}
-        for lf in lfiles:
-            mobj = manageDataFileVersions.datedFileRex.match(lf)
-            if mobj:
-               fls = ( int(mobj.groupdict()[z]) for z in  ('year', 'month', 'day','hour','minute') )
-               date = datetime.datetime( *fls )
-               gen  =  "!".join(map (lambda x: mobj.groupdict()[x] , ("hdr","ftr")))
-               filDir[lf]=(gen,date)
-               if gen in genDir:
-                    if date > genDir[gen][0]:
-                        genDir[gen] = (date,lf)
-               else:
-                    genDir[gen]= (date,lf, self.dirpath+"/"+lf)
-        self.filDir = filDir
-        self.genDir = genDir
-        
-    def listMostRecent(self):
-        return sorted([  k[1]   for k in self.genDir.values()])
-    
-    def getRecentVersion(self,file, default=None):
-        if file not in self.filDir:
-            if not default:
-               raise RuntimeError(f"Unexpected file:'{file}'")
-            elif default is True:
-                return file
-            else:
-                return default
-        else:
-                return self.genDir[self.filDir[file][0]][1]
-    
-
-
-# In[ ]:
-
-
-def setDefaults(dict, optDict, defaultDict):
-    for (k,v) in optDict.items():
-        dict[k] = v
-    for  (k,v) in defaultDict.items():
-        if k not in dict:
-            dict[k] = v
-
-
-# In[ ]:
-
-
-class  figureTSFromFrame(object):
-    """Make a figure from a time series from a DataFrame; 
-          it is expected that the row index are dates in string.
-          These are converted into the elapsed days from start of table, and represented
-          in DateTime format.
-          Keywords listed in defaultOpts are honored.
-    """
-    defaultOpts = {"dateFmt":'%Y-%m-%d', "figsize":(10,10)}
-    def __init__(self, df, **kwdOpts):
-        self.df   = df.copy()
-        self.optd = {}
-        setDefaults(self.optd, kwdOpts, figureTSFromFrame.defaultOpts)
-        self._dtToElapsed()
-        
-    def _dtToElapsed(self):
-        self.df.origIndex = self.df.index
-        self.dt = PAN.to_datetime(self.df.index, format=self.optd["dateFmt"]  )
-        self.elapsedDays = self.dt - self.dt[0]
-        self.df.index = self.elapsedDays.days
-        
-    def doPlot(self, **kwdOpts):   
-        PLT.figure(figsize=self.optd["figsize"])
-        PLT.plot(self.df);
-        self._plotKwd(kwdOpts)
-        
-    def doPlotBycol(self, colSel=None, colOpts = {}, **kwdOpts):
-        if colSel is None:
-           colSel = self.df.columns
-        chk = set(colSel)-set(self.df.columns)
-        if len(chk)>0:
-            raise RuntimeError(f"Unexpected col names in colSel={chk}")
-        
-        PLT.figure(figsize=self.optd["figsize"])
-        for c in colSel:
-               if c in colOpts:
-                    optd = colOpts[c]
-               else:
-                    optd = {}
-               
-               PLT.plot(self.df.loc[:,c], **optd); 
-        self._plotKwd(kwdOpts)
-        
-    def _plotKwd(self,kwdOpts):
-        # plots an axis label
-        if "xlabel" in kwdOpts:
-           PLT.xlabel(kwdOpts["xlabel"]) 
-        if "ylabel" in kwdOpts:
-           PLT.ylabel(kwdOpts["ylabel"])
-        if "title" in kwdOpts:
-           PLT.title(kwdOpts["title"])
-        # sets our legend for our graph.
-        if "legend"  in kwdOpts and kwdOpts["legend"]:          
-           PLT.legend(self.df.columns,loc='best') ;
-
-
-# Two examples of using this class is given below:
-# - a simple one (the <ImgMgr> is defined above, it shows that the plot may be output to file)
-# ```
-# painter = figureTSFromFrame(dfGr)
-# painter.doPlot(xlabel=f"Days since {painter.dt[0]}",
-#                title="Whole France/Data ER + SOS-medecin\nAll age groups",legend=True  )
-# ImgMgr.save_fig("FIG002")
-# ```
-# 
-# - a more sophisticated case, where line styles are defined:    
-# ```
-# painter = figureTSFromFrame(dm)
-# colOpts = {'dc_F': {"c":"r","marker":"v"},  
-#            'dc_M': {"c":"b","marker":"v"},
-#            'rea_F': {"c":"r","marker":"o", "linestyle":"--"},  
-#            'rea_M': {"c":"b","marker":"o", "linestyle":"--"},
-#            'rad_F': {"marker":"+"},
-#            'rad_M': {"marker":"+"}
-#           }
-# painter.doPlotBycol(colOpts = colOpts,
-#                     xlabel  = f"Days since {painter.dt[0]}",
-#                title="Whole France\ / Hospital\n Male / Female\n:Daily patient status (ICU,Hosp) / Accumulated (discharged, dead)",
-#                legend=True    ) 
-#                ```
 
 # ## Load from CSV 
 # These csv have been downloaded before!; We check what is in the data directory; for each file, we
@@ -536,6 +342,8 @@ display(meta_Hosp[[ "Colonne","Description_EN" ]])
 ImgMgr.save_fig("FIG003")
 
 
+# ### Now analyze hospital data according to sex
+
 # In[ ]:
 
 
@@ -557,12 +365,6 @@ dm.columns = (*cols1,*cols2)
 # In[ ]:
 
 
-dm.loc[:, 'hosp_M']
-
-
-# In[ ]:
-
-
 painter = figureTSFromFrame(dm)
 colOpts = {'dc_F': {"c":"r","marker":"v"},  
            'dc_M': {"c":"b","marker":"v"},
@@ -577,6 +379,53 @@ painter.doPlotBycol(colOpts = colOpts,
                legend=True    ) 
 display(meta_Hosp[[ "Colonne","Description_EN" ]])
 ImgMgr.save_fig("FIG004")
+
+
+# ### Now analyze hospital data according to age
+# For now the data available in table `data_hospAge` covers a small number of days.... hopefully this may improve, either by more earlier data becoming available, or just by more data being collected day after day!
+
+# In[ ]:
+
+
+data_hosp_RegAge=data_hospAge.set_index(["reg","jour",'cl_age90'])
+dhRA=data_hosp_RegAge[ data_hosp_RegAge.index.get_level_values(2)!=0 ].unstack('cl_age90')
+dhA = dhRA.groupby("jour").sum()
+display(dhA)
+
+
+# In[ ]:
+
+
+painter = figureTSFromFrame(dhA)
+painter.doPlotBycol()
+
+
+# In[ ]:
+
+
+data_hosp_RegAge.index.get_level_values(2)
+
+
+# In[ ]:
+
+
+display(meta_Ages)
+
+
+# In[ ]:
+
+
+gr_hosp_age =  data_hospAge.groupby("jour").sum()
+display(gr_hosp_age)
+
+
+# In[ ]:
+
+
+dm= PAN.concat([d1s,d2s], axis=1)
+cols1 = list(map (lambda x: x+"_M", d1s.columns))
+cols2 = list(map (lambda x: x+"_F", d2s.columns))
+dm.columns = (*cols1,*cols2)
 
 
 # In[ ]:
