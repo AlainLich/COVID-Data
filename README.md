@@ -19,20 +19,27 @@ access to the data for testing personal "what-if" hypotheses.
 
 ## Gallery
 
-![First example](./JupySessions/images/Chap01/FIG002.png)
+![First example](./JupySessions/images/Chap01/FIG002.jpg)
 ![Second example](./JupySessions/images/Chap01/FIG003.jpg)
 ![Third example](./JupySessions/images/Chap01/FIG004.jpg)
+![Hospital outcomes per age](./JupySessions/images/Chap01/FIG005.jpg)
 
 ## install requirements
 ### Python
-This requires Python 3, and has been tested with Python 3.6.5, on a Linux
+- This requires Python 3, and has been tested with Python 3.6.5, on a Linux
 Ubuntu 18.04 LTS system.
+
+- In the current version, the library is dependent on
+some features from the IPython package, which comes with Jupyter. This constraint
+may be removed in the future.
 
 ### Libraries
 ```
 pip install -U -R requirements.txt
 
 ```
+
+
 
 ## Warning(s)
 This is provided as is, see the LICENSE file.

@@ -9,12 +9,13 @@
 
 # # Libraries
 
-# In[27]:
+# In[ ]:
 
 
 # Sys import
 import sys, os, re
 # Common imports
+import math
 import numpy             as NP
 import numpy.random      as RAND
 import scipy.stats       as STATS
@@ -40,7 +41,7 @@ import pandas as PAN
 import xlrd
 
 
-# In[2]:
+# In[ ]:
 
 
 import warnings
@@ -52,7 +53,7 @@ print("For now, reduce python warnings, I will look into this later")
 # The next cell attempts to give user some information if things improperly setup.
 # Intended to work both in Jupyter and when executing the Python file directly.
 
-# In[26]:
+# In[ ]:
 
 
 if not get_ipython() is None and os.path.abspath("../source/") not in sys.path:
@@ -64,9 +65,9 @@ try:
 except Exception as err:
     print("Could not find library 'lib' with contents 'DataGouvFr' ")
     if get_ipython() is None:
-        print("Check the PYTHONPATH environment variable should point to 'source' wich contains 'lib'")
+        print("Check the PYTHONPATH environment variable which should point to 'source' wich contains 'lib'")
     else:
-        print("You are supposed to be running in JupySessions, and '../source' should exist")
+        print("You are supposed to be running in JupySessions, and '../source/lib' should exist")
     raise err
 
 
@@ -74,7 +75,9 @@ except Exception as err:
 # 
 # It is expected that your working directory is named `JupySessions`, that it has subdirectories `images/*` 
 # where generated images may be stored to avoid overcrowding. At the same level as your working dir
-# there should be directories `../data` for storing input data and `../source` for python scripts, libraries,...
+# there should be directories `../data` for storing input data and `../source` for python scripts.
+# My package library is in `../source/lib`, and users running under Python (not in Jupyter) should
+# set their PYTHONPATH to include "../source" ( *or whatever appropriate* ).
 
 # In[ ]:
 
@@ -285,10 +288,12 @@ checkRepresentedRegions(data_dailyRegion, print=True);
 
 
 dfGr = PAN.DataFrame(gr_all_age_regions.copy(), columns=gr_all_age_regions.columns[1:])
-painter = figureTSFromFrame(dfGr)
-painter.doPlot(xlabel=f"Days since {painter.dt[0]}",
-               title="Whole France/Data ER + SOS-medecin\nAll age groups",legend=True  )
-
+painter = figureTSFromFrame(dfGr,figsize=(12,8))
+painter.doPlot()
+painter.setAttrs(label=f"Days since {painter.dt[0]}",
+                 title="Whole France/Data ER + SOS-medecin\nAll age groups",
+                 legend=True,
+                 xlabel=f"Days since {painter.dt[0]}")
         
 PAN.set_option('display.max_colwidth', None)
 display(meta_QuotReg[[ "Colonne","Description_FR" ]])
@@ -319,10 +324,18 @@ display(data_dailyFrance[:5])
 
 gr_all_data_hospNouveau=data_hospNouveau.groupby('jour').sum()
 dfGrHN = PAN.DataFrame(gr_all_data_hospNouveau)
+colOpts = {'incid_dc': {"c":"b","marker":"v"},  
+           'incid_rea': {"c":"r","marker":"o", "linestyle":"--"},
+           'incid_rad': {"marker":"+"},
+           'incid_hosp': {"marker":"*"}
+          }
+
 painter = figureTSFromFrame(dfGrHN)
-painter.doPlot(xlabel=f"Days since {painter.dt[0]}",
-               title="Whole France (Hospital)\nDaily variation in patient status",
-               legend=True  ) 
+painter.doPlot()
+painter.setAttrs(colOpts=colOpts,
+                 xlabel=f"Days since {painter.dt[0]}", 
+                 title="Whole France (Hospital)\nDaily variation in patient status",
+                 legend=True  ) 
 
 PAN.set_option('display.max_colwidth', None)
 display(meta_HospIncid[[ "Colonne","Description_EN" ]])
@@ -334,10 +347,17 @@ display(meta_HospIncid[[ "Colonne","Description_EN" ]])
 gr_all_data_hosp=data_hosp.loc[data_hosp["sexe"] == 0 ].groupby('jour').sum()
 cols = [ c for c in gr_all_data_hosp.columns if c != 'sexe']
 dfGrH = PAN.DataFrame(gr_all_data_hosp[cols])
+colOpts = { 'dc': {"c":"b","marker":"v"},  
+           'rea': {"c":"r","marker":"o", "linestyle":"--"},
+           'rad': {"marker":"+"},
+           'hosp': {"marker":"*"}
+          }
 painter = figureTSFromFrame(dfGrH)
-painter.doPlot(xlabel=f"Days since {painter.dt[0]}",
-               title="Whole France / Hospital\n:Daily patient status (ICU,Hosp) / Accumulated (discharged, dead)",
-               legend=True  ) 
+painter.doPlot()
+painter.setAttrs( colOpts=colOpts,
+                  xlabel=f"Days since {painter.dt[0]}",
+                  title="Whole France / Hospital\n:Daily patient status (ICU,Hosp) / Accumulated (discharged, dead)",
+                 legend=True) 
 display(meta_Hosp[[ "Colonne","Description_EN" ]])
 ImgMgr.save_fig("FIG003")
 
@@ -373,7 +393,8 @@ colOpts = {'dc_F': {"c":"r","marker":"v"},
            'rad_F': {"marker":"+"},
            'rad_M': {"marker":"+"}
           }
-painter.doPlotBycol(colOpts = colOpts,
+painter.doPlotBycol()
+painter.setAttrs(colOpts = colOpts,
                     xlabel  = f"Days since {painter.dt[0]}",
                title="Whole France\ / Hospital\n Male / Female\n:Daily patient status (ICU,Hosp) / Accumulated (discharged, dead)",
                legend=True    ) 
@@ -388,44 +409,80 @@ ImgMgr.save_fig("FIG004")
 
 
 data_hosp_RegAge=data_hospAge.set_index(["reg","jour",'cl_age90'])
-dhRA=data_hosp_RegAge[ data_hosp_RegAge.index.get_level_values(2)!=0 ].unstack('cl_age90')
-dhA = dhRA.groupby("jour").sum()
-display(dhA)
+dhRA = data_hosp_RegAge[ data_hosp_RegAge.index.get_level_values(2)!=0 ].unstack('cl_age90')
+dhRAg = dhRA.groupby("jour").sum()
+
+ageClasses = sorted(set(dhRAg.columns.get_level_values(1)))
+print(f"age classes = {ageClasses}")
+
+levCat = sorted(set(dhRA.columns.get_level_values(0)))
+levAge = sorted(set(dhRA.columns.get_level_values(1)))
+subnodeSpec=(lambda i,j:{"nrows":i,"ncols":j})(*subPlotShape(len(levAge),maxCol=6))
+
+print(f"nb age classes:{len(levAge)}\tsubnodeSpec:{subnodeSpec}")
+if len(levAge) != len(ageClasses):
+    raise RuntimeError("Inconsistent values for number of age classes")
 
 
 # In[ ]:
 
 
-painter = figureTSFromFrame(dhA)
-painter.doPlotBycol()
+colOpts = {'dc':  {"c":"b","marker":"v"},  
+           'rea': {"c":"r","marker":"o", "linestyle":"--"},  
+           'rad':  {"marker":"^"},
+           'hosp': {"marker":"+"}
+          }
 
 
 # In[ ]:
 
 
-data_hosp_RegAge.index.get_level_values(2)
+painter = figureTSFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
+for i in range(len(levAge)):
+    cat = ageClasses[i]
+    if cat < 90:
+        title = f"Age {cat-9}-{cat}"
+    else: 
+        title = "Age 90+"
+        
+    dfExtract = dhRAg.loc(axis=1)[:,cat]
+    # remove the now redundant information labeled 'cl_age90'
+    dfExtract.columns = dfExtract.columns.levels[0]
+    painter.doPlotBycol(dfExtract);
+    painter.setAttrs(colOpts = colOpts,
+                     xlabel  = f"Days since {painter.dt[0]}",
+                     title   = title,
+                     legend  = True    ) 
+    
+    
+    painter.advancePlotIndex()
+
+display(meta_Hosp[[ "Colonne","Description_EN" ]])
+ImgMgr.save_fig("FIG005")
 
 
 # In[ ]:
 
 
-display(meta_Ages)
+display(dfExtract)
 
 
 # In[ ]:
 
 
-gr_hosp_age =  data_hospAge.groupby("jour").sum()
-display(gr_hosp_age)
+dfExtract.columns.levels[0]
 
 
 # In[ ]:
 
 
-dm= PAN.concat([d1s,d2s], axis=1)
-cols1 = list(map (lambda x: x+"_M", d1s.columns))
-cols2 = list(map (lambda x: x+"_F", d2s.columns))
-dm.columns = (*cols1,*cols2)
+dfExtract.columns = dfExtract.columns.levels[0]
+
+
+# In[ ]:
+
+
+display(dfExtract)
 
 
 # In[ ]:
