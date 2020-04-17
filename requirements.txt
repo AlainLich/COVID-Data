@@ -1,9 +1,14 @@
- numpy
- scipy
- pandas
- matplotlib
- seaborn
  docopt
+ hashlib
+ matplotlib
+ numpy
+ pandas
+ pprint
+ requests
+ scipy
+ seaborn
+ unittest
+ urllib
  xlrd
  IPython
- 
+

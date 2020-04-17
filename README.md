@@ -6,7 +6,7 @@ The data sources used are located:
 
 
 Mostly this consists of jupyter notebook(s), while python scripts are also provided
-almost direct transpositions of the notebooks.
+almost direct transpositions of the notebooks. This is supported by library modules.
 
 
 ## Aim:
@@ -24,7 +24,20 @@ access to the data for testing personal "what-if" hypotheses.
 ![Third example](./JupySessions/images/Chap01/FIG004.jpg)
 ![Hospital outcomes per age](./JupySessions/images/Chap01/FIG005.jpg)
 
-## install requirements
+## Functionality
+- Jupyter notebook(s): display data 
+- `DataGrouvFr` Python module :
+-- manage a local repository with files from www.data.gouv.fr
+  by handling file version/timestamp in file name
+-- automate the transfer of files with badge "covid-19", maintain a local cache of
+   information concerning these files 
+- `figureHelpers.py` module:
+-- some convenience tools to facilitate/automate making `matplotlib` figures.
+(Also looking forwards towards ̀seaborn`... after some wait... )
+
+   For more information on changes (and bugs), see the git log.
+
+## install requirement
 ### Python
 - This requires Python 3, and has been tested with Python 3.6.5, on a Linux
 Ubuntu 18.04 LTS system.

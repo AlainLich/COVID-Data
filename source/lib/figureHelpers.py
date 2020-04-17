@@ -32,7 +32,7 @@ import seaborn as SNS
 SNS.set(font_scale=1)
 
 ##
-##  See example after the classes
+##  See example of utilisation after the classes
 ##
 class  figureFromFrame(object):
     """ Make a figure from a DataFrame; 
@@ -98,22 +98,6 @@ class  figureFromFrame(object):
          if isinstance(self.subplots, NP.ndarray): 
              self.subplotIndex = 1 + (self.subplotIndex + (incr -1)) % self.subplots.size
              
-    def doPlot(self, df=None,  colOpts = {}, **kwdOpts):
-        self. _setDf(df)
-        if self.df is None:
-            raise RuntimeError("By now you must have given me a DataFrame")
-        self.preparePlot()
-        colSel = self.df.columns
-
-        for c in colSel:
-               if c in colOpts:
-                    optd = colOpts[c]
-               else:
-                    optd = {}
-                    
-        self._setSubplot()
-        self.lines = self.currSub.plot(self.df,**optd);
-        self._plotKwd(kwdOpts)
         
     def _plotKwd(self,kwdOpts):
         # plots an axis label
@@ -153,6 +137,23 @@ class  figureFromFrame(object):
                 p = PLT.getp(l, 'label')
                 clab =    cols[count]
                 assignOpt( kwdOpts, clab, l)
+
+    def doPlot(self, df=None,  colOpts = {}, **kwdOpts):
+        self. _setDf(df)
+        if self.df is None:
+            raise RuntimeError("By now you must have given me a DataFrame")
+        self.preparePlot()
+        colSel = self.df.columns
+
+        for c in colSel:
+               if c in colOpts:
+                    optd = colOpts[c]
+               else:
+                    optd = {}
+                    
+        self._setSubplot()
+        self.lines = self.currSub.plot(self.df,**optd);
+        self._plotKwd(kwdOpts)
                 
     def doPlotBycol(self, df=None, colSel=None, colOpts = {}, **kwdOpts):
         self._setDf(df)
@@ -204,30 +205,55 @@ class  figureTSFromFrame(figureFromFrame):
         
 
 
-# Two examples of using this class is given below:
-# - a simple one (the <ImgMgr> is defined above, it shows that the plot may be output to file)
-# ```
-# painter = figureTSFromFrame(dfGr)
-# painter.doPlot(xlabel=f"Days since {painter.dt[0]}",
-#                title="Whole France/Data ER + SOS-medecin\nAll age groups",legend=True  )
-# ImgMgr.save_fig("FIG002")
-# ```
-# 
-# - a more sophisticated case, where line styles are defined:    
-# ```
-# painter = figureTSFromFrame(dm)
-# colOpts = {'dc_F': {"c":"r","marker":"v"},  
-#            'dc_M': {"c":"b","marker":"v"},
-#            'rea_F': {"c":"r","marker":"o", "linestyle":"--"},  
-#            'rea_M': {"c":"b","marker":"o", "linestyle":"--"},
-#            'rad_F': {"marker":"+"},
-#            'rad_M': {"marker":"+"}
-#           }
-# painter.doPlotBycol(colOpts = colOpts,
-#                     xlabel  = f"Days since {painter.dt[0]}",
-#                title="Whole France\ / Hospital\n Male / Female\n:Daily patient status (ICU,Hosp) / Accumulated (discharged, dead)",
-#                legend=True    ) 
-#                ```
+# Two examples of using this class are given below:
+
+##  Output and more details at https://github.com/AlainLich/COVID-Data
+
+##  ------------------------------------------------------------  Example 2
+##  painter = figureTSFromFrame(dm)
+##  colOpts = {'dc_F': {"c":"r","marker":"v"},  
+##             'dc_M': {"c":"b","marker":"v"},
+##             'rea_F': {"c":"r","marker":"o", "linestyle":"--"},  
+##             'rea_M': {"c":"b","marker":"o", "linestyle":"--"},
+##             'rad_F': {"marker":"+"},
+##             'rad_M': {"marker":"+"}
+##            }
+##  painter.doPlotBycol()
+##  painter.setAttrs(colOpts = colOpts,
+##                      xlabel  = f"Days since {painter.dt[0]}",
+##                      title="Whole France\ / Hospital\n Male....",
+##                 legend=True    ) 
+##  display(meta_Hosp[[ "Colonne","Description_EN" ]])
+##  ImgMgr.save_fig("FIG004")
+##  
+##  ------------------------------------------------------------  Example 2
+##  colOpts = {'dc':  {"c":"b","marker":"v"},  
+##             'rea': {"c":"r","marker":"o", "linestyle":"--"},  
+##             'rad':  {"marker":"^"},
+##             'hosp': {"marker":"+"}
+##            }
+##  
+##  painter = figureTSFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
+##  for i in range(len(levAge)):
+##      cat = ageClasses[i]
+##      if cat < 90:
+##          title = f"Age {cat-9}-{cat}"
+##      else: 
+##          title = "Age 90+"
+##          
+##      dfExtract = dhRAg.loc(axis=1)[:,cat]
+##      # remove the now redundant information labeled 'cl_age90'
+##      dfExtract.columns = dfExtract.columns.levels[0]
+##      painter.doPlotBycol(dfExtract);
+##      painter.setAttrs(colOpts = colOpts,
+##                       xlabel  = f"Days since {painter.dt[0]}",
+##                       title   = title,
+##                       legend  = True    ) 
+##      
+##      
+##      painter.advancePlotIndex()
+##  ImgMgr.save_fig("FIG005")          
+##  ------------------------------------------------------------  END
 
 
 def subPlotShape(n,colFirst=True, maxCol=10):

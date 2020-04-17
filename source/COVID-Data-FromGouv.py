@@ -464,29 +464,5 @@ ImgMgr.save_fig("FIG005")
 # In[ ]:
 
 
-display(dfExtract)
-
-
-# In[ ]:
-
-
-dfExtract.columns.levels[0]
-
-
-# In[ ]:
-
-
-dfExtract.columns = dfExtract.columns.levels[0]
-
-
-# In[ ]:
-
-
-display(dfExtract)
-
-
-# In[ ]:
-
-
 
 
