@@ -19,10 +19,10 @@ access to the data for testing personal "what-if" hypotheses.
 
 ## Gallery
 
-![First example](./JupySessions/images/Chap01/FIG002.jpg)
-![Second example](./JupySessions/images/Chap01/FIG003.jpg)
-![Third example](./JupySessions/images/Chap01/FIG004.jpg)
+![Hospital data](./JupySessions/images/Chap01/FIG003.jpg)
+![Hospital data according to sex](./JupySessions/images/Chap01/FIG004.jpg)
 ![Hospital outcomes per age](./JupySessions/images/Chap01/FIG005.jpg)
+![Tests](./JupySessions/images/Chap01/FIG006.jpg)
 
 ## Functionality
 - Jupyter notebook(s): display data 
@@ -60,3 +60,35 @@ This is provided as is, see the LICENSE file.
 ## References
 - https://github.com/alichnewsky/covid : basic script to work with the Novel Coronavirus (COVID-19) cases 
       dataset provided by JHU CSSE
+
+https://www.academie-sciences.fr/fr/
+
+   For more information on changes (and bugs), see the git log.
+
+## install requirement
+### Python
+- This requires Python 3, and has been tested with Python 3.6.5, on a Linux
+Ubuntu 18.04 LTS system.
+
+- In the current version, the library is dependent on
+some features from the IPython package, which comes with Jupyter. This constraint
+may be removed in the future.
+
+### Libraries
+```
+pip install -U -R requirements.txt
+
+```
+
+
+
+## Warning(s)
+This is provided as is, see the LICENSE file.
+
+## References
+- https://github.com/alichnewsky/covid : basic script to work with the Novel Coronavirus (COVID-19) cases 
+      dataset provided by JHU CSSE
+
+- https://www.academie-sciences.fr/fr/: many references
+
+- https://www.eficiens.com/coronavirus-statistiques/#evolution-contamination-france: well represented statistics

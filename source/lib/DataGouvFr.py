@@ -1,14 +1,26 @@
 '''
- Specific setup for files imported from https://www.data.gouv.fr/fr/datasets/...
+ Facilitate the use of data from  https://www.data.gouv.fr
+
+1) For downloaded files:
  
- Deals with the fact that the site features files with filenames containing date
- information; this module permits to check/load the latest version.
+ Deals with the fact that the site exports/downloads files with filenames 
+ containing date/timestamp information; this module permits to check/load 
+ the latest version.
 
  Expectations:
     - local copies of relevant files are in a local directory
-    - files can be downloaded from the www.data.gouv.fr site; local copies are
-      made of the most recent versions
-    - the remote site is checked after a prescribed duration
+
+2) For direct/automated access to the site via its http API
+    - files are downloaded from the www.data.gouv.fr site; local copies are
+      made of the most recent versions. Directory of loaded information is
+      kept locally, and refreshed after a prescribed duration
+    - the remote site is checked for updates after a prescribed duration
+
+TBD:
+   - manage the local data directory as a cache
+   - permit to access the descriptive information pertaining the cached files
+   - documentation (wishful thinking?), also format so that doxygen output is
+     nicer
 '''
 
 __author__ = 'Alain Lichnewsky'
@@ -34,10 +46,18 @@ class manageDataFileVersions(object):
 
     datedFileRex = re.compile("""^(?P<hdr>.*[^\d])
         (?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+)  # Year
-       -(?P<hour>\d+)h(?P<minute>\d+)             # Time
+       -(?P<hour>\d+)h(?P<minute>\d+)              # Time
         (?P<ftr>.*)$""", re.VERBOSE)    
     
     def _walk(self):
+        """ (internal)
+            Walk the file in the dirpath directory (no support for
+            nested dirs at this point). Fill the filDir/genDir 
+            directories where:
+               - gendir is indexed by filenames with removed timestamps (gen),
+		        permits access to most recent version
+               - fildir is indexed by filename, gives access to gen and date
+        """
         lfiles = os.listdir(self.dirpath)
         filDir={}
         genDir={}
@@ -67,9 +87,18 @@ class manageDataFileVersions(object):
                 return None
                
     def listMostRecent(self):
+        """
+            Returns sorted list of files which are in  the `dirpath` directory, 
+            and which represent the most recent version of files with timestamps in the
+            filename (we do not look into file attributes).
+        """
         return sorted([  k[1]   for k in self.genDir.values()])
     
     def getRecentVersion(self,file, default=None):
+        """
+          Return the most recent name of a file; if not found will raise
+          an exception unless a default is given
+        """
         if file not in self.filDir:
             if not default:
                raise RuntimeError(f"Unexpected file:'{file}'")
@@ -82,8 +111,16 @@ class manageDataFileVersions(object):
 
             
 class manageAndCacheDataFiles(manageDataFileVersions):
-    """ For a set of remote files, check whether we have a local version which 
-        is up to date.
+    """ Manage a local repository extracted from www.data.gouv.fr:
+        - extraction of the  list of files based on criteria conforming to
+          the www.data.gouv.fr API
+        - caching of this information, the remote site is consulted only
+          after a parametrized delay 
+        - for local copies of files, permits to access the most recent version 
+          as indicated in base class
+        - management of the local cache directory (TBD: remove redundant files)
+
+        For now examples are shown in the test section at end of file (`test_remote`)
     """
     defaultOpts = {'HttpHDR': 'https://www.data.gouv.fr/api/1',
                    'ApiInqDataset': 'datasets',
@@ -97,27 +134,36 @@ class manageAndCacheDataFiles(manageDataFileVersions):
         setDefaults(self.options, kwdOpts, manageAndCacheDataFiles.defaultOpts)
 
 
-    def getRemoteInfo(self):
-        # placeholder, need to check if get from cache or remote
-        cacheValid = self._getFromCache()
-        if not cacheValid:
-            self._getRemoteProper()
+    def getRemoteInfo(self, localOnly=False):
+        """ Load the information describing files on the remote site, either
+            from a local cached copy (in file .cache), or by reloading after the 
+            elapsed time specified by 'CacheValidity'
 
-    def _getFromCache(self):
+            Parameter localOnly specifies that remote cache should not be consulted
+        """
+        cacheValid = self._getFromCache(localOnly=localOnly)
+        if not ( localOnly or cacheValid ):
+             self._getRemoteProper()
+
+    def _getFromCache(self, localOnly):
+        """ (internal) Read from the cached file (a pickle of a json)
+        """
         cacheFname = os.path.join(self.dirpath, ".cache")
         self.cacheFname = cacheFname
         valid = True
         if not os.path.isfile(cacheFname):
             valid = False
+            if localOnly:
+                raise RuntimeError(f"No cache ({cacheFname}) to reload information locally")
         else:
             mtime = os.path.getmtime(cacheFname)
             nowtime = time.time()
             elapsed = nowtime - mtime
             strElapsed = time.strftime("%Hh %Mm %Ss", time.gmtime(elapsed))
-            if elapsed > self.options['CacheValidity']:
+            if elapsed > self.options['CacheValidity'] and  not  localOnly:
                print(f"Need to reload cache from remote,  stale after {strElapsed}")
-               valid = false
-            else:
+               valid = False
+        if valid:
                with open(self.cacheFname,"rb") as pikFile:
                   pickler = pickle.Unpickler( pikFile)
                   self.data = pickler.load()
@@ -126,6 +172,10 @@ class manageAndCacheDataFiles(manageDataFileVersions):
         return valid
         
     def _getRemoteProper(self):
+          """ Read the information on selected files from the remote site, store
+              it into the .cache file, keep it in the self.data attribute as the
+              python representation of a json
+          """
           url = "/".join( map (lambda x:self.options[x],('HttpHDR','ApiInqDataset')))
           resp = requests.get(url=url, params=self.options['InqParmsDir'])
           cde =resp.status_code
@@ -135,7 +185,6 @@ class manageAndCacheDataFiles(manageDataFileVersions):
           print(f"URL/request={resp.url}\tStatus:{cde}:{cdeTxt}")
 
           self.data = resp.json()
-          print(f"Obtained {len(self.data)} from remote")
           
           with open(self.cacheFname,"wb") as pikFile:
                   pickler = pickle.Pickler( pikFile)
@@ -144,6 +193,9 @@ class manageAndCacheDataFiles(manageDataFileVersions):
 
     _resourceList = ('title','latest','last_modified', 'format', 'checksum' )
     def pprintDataResources(self, bulk=False) :
+          """ Pretty print selected information on files from the json; if parameter
+              `bulk` is True, the full json information is also shown
+          """
           prettyPrinter = pprint.PrettyPrinter(indent=4)
           fileList=[]
           resourceSet = set()
@@ -168,8 +220,108 @@ class manageAndCacheDataFiles(manageDataFileVersions):
           print(prettyPrinter.pformat(fileList))
           print("++ "*12+"\n")
 
+    ppItemRex = re.compile("[*+()]")
+    def pprintDataItem(self, item="description") :
+          """ Pretty print selected information on files from the json.
+              Item syntax is <field>('/'<field>)+, where each field is either a
+              plain string or a regular expression for module `re`.
+              - a regexp is recognized by including one of the characters '*+()'
+              - '/' is reserved as a field separator, must not be used inside a field
+              - a field which is not a regexp will be matched using equality
+              
+              Item matches the first substructure accessed by a list of nested
+              identifiers where the first field matches the first identifier,... etc
 
+              See examples in the test section.
+               
+          """
+          def tryReCompile(s):
+              retval = s
+              if manageAndCacheDataFiles.ppItemRex.search(s):
+                  try:
+                    retval =  re.compile(s)
+                  except Exception as err:
+                      print(f"Rejected regexp:'{s}': {err}")
+                      retval = s
+              return retval
+
+          def matchIfRex(spec,x):
+              if isinstance(spec,str):
+                  retval = spec == x
+              else:
+                  retval = spec.match(x) != None
+              return retval
+              
+          if not isinstance(item,str):
+              raise RuntimeError(f"Parm item is not string: {type(item)}")
+
+          def recurse(specList, jsonSubList, prettyPrinter, prefix=[], rid=[]):
+              #print(f"\nIn recurse specList={specList} prefix={prefix}")
+              recnum = 0
+              skip=False
+              zskip={False:"",True:"\n"}
+              for jsonDict in jsonSubList:
+                  if isinstance(jsonDict,str):
+                      print(f"{':'.join(prefix)}:({'.'.join(rid)}):>>>"+prettyPrinter.pformat( jsonDict))
+                      return
+                  spec =  specList[0]
+                  if isinstance(spec,str) and spec in jsonDict:
+                      dolist = (spec,)
+                  elif isinstance(jsonDict,dict):
+                      dolist=list( filter ( lambda x:  matchIfRex(spec,x),
+                                            sorted(jsonDict.keys())))
+                  elif jsonDict is None:
+                      print(f"{':'.join(prefix)}\t->\t None")
+                      return
+                  elif isinstance(jsonDict, Iterable):
+                        dolist= (spec,)
+                  else:
+                      print(f"Weird jsonDict: {type(jsonDict)}\t->{jsonDict}")
+                      return
+
+                  r=rid.copy()
+                  r.append(str(recnum))
+                  recnum+=1
+                  skip = True
+                  
+                  for el in dolist:
+                      if isinstance(jsonDict,dict):
+                          if el in  jsonDict:
+                              json =  jsonDict[el]
+                              if len (specList) == 1:
+                                 print(f"{zskip[skip]}{':'.join(prefix)}::{el}>@({'.'.join(r)})\t->\t"+prettyPrinter.pformat( json ))
+                                 if skip:
+                                     skip=False
+                                                                 
+                              elif  len (specList) > 1:
+                                 pfx = prefix.copy()
+                                 pfx.append(el)
+                                 if isinstance(json,list):
+                                    recurse(specList[1:], json, prettyPrinter, prefix=pfx, rid=r)
+                                 else:    
+                                    recurse(specList[1:], [json], prettyPrinter, prefix=pfx,rid=r)
+                                 #print(f"{'--'.join(prefix)}@@")
+                      else:
+                          for lstEl in jsonDict:
+                              for kl  in lstEl.keys():
+                                  if el == kl or el.match(kl):
+                                      raise RuntimeError(f"\tDo something for {kl}")
+                      #print(f"{'+++'.join(prefix)}##")
+
+                                  
+          prettyPrinter = pprint.PrettyPrinter(indent=4)
+          itemList = list( map ( tryReCompile, item.split("/")))
+          recurse(itemList, self.data['data'],prettyPrinter )
+
+          
     def updatePrepare(self):
+          """ select files to be loaded from remote. Loading is done only if
+                1)  file on remote ( as indicated in the periodically reloaded/otherwise 
+                     cached)    is newer than local file
+                2) file does not exist locally
+
+              preparatory information is stored in attribute `updtList`
+          """
           inStore =  sorted([  k   for k in self.genDir.values()])
           filStore =  sorted([  k   for k in self.filDir.values()])
           
@@ -188,7 +340,7 @@ class manageAndCacheDataFiles(manageDataFileVersions):
                   genDate = self.makeGenDate(fname)
                   if genDate is None:
                       gen,fdate = (None,None)
-                      reason="ifAbsent"         # no generic id
+                      reason="ifAbsent"         # no generic id:filename without timestamp
                   else:
                       gen,fdate  = genDate
                       if gen in self.genDir:
@@ -208,6 +360,13 @@ class manageAndCacheDataFiles(manageDataFileVersions):
        .(?P<hour>\d+):(?P<minute>\d+):(?P<seconde>\d+)    # Time
          """, re.VERBOSE) 
     def cacheUpdate(self):
+          """ Load files from remote if
+                1)  file on remote ( as indicated in the periodically reloaded/otherwise 
+                     cached)    is newer than local file
+                2) file does not exist locally
+
+              preparatory information is stored in attribute `updtList`
+          """
           prettyPrinter = pprint.PrettyPrinter(indent=4)
           updtList = self.updtList
           for entry in updtList:
@@ -241,13 +400,15 @@ class manageAndCacheDataFiles(manageDataFileVersions):
     def _getFromRemote(self,remoteDT,
                             reason=None,fname=None, url=None, org=None, checksum=None,
                             format=None, modDate=None, cachedDate=None, genKey=None):
+         """ (internal) read from remote using API/http protocol
+         """
          if remoteDT is None:
              print(f"remoteDT is None for reason:{reason} fname:{fname}\n!! !!")
          fullPathname = os.path.join(self.dirpath,fname)
          with urllib.request.urlopen(url) as furl :
               with open(fullPathname,"wb") as fwr : 
                    fwr.write(furl.read())
-         print(f"Wrote file '{fullPathname}' from URL:'{url}'")
+         print(f"Wrote file \t'{fullPathname}'\n\tfrom URL:'{url}'")
 
          chk = self. verifChecksum(fullPathname,checksum)
          if chk:
@@ -261,6 +422,8 @@ class manageAndCacheDataFiles(manageDataFileVersions):
          return chk
          
     def verifChecksum(self, filpath, checksum):
+        """ (internal) verify the checksum if provided from remote (loaded dir. info)
+        """
         if checksum == None:
             return
         if any(map( lambda x: not x in checksum, ('type','value'))):
@@ -289,24 +452,73 @@ if __name__ == "__main__":
 
     class DGTest(unittest.TestCase):
         def test_baseLocal(self):
-            return
+            """ Example using local information
+            """
+
             dataFileVMgr = manageDataFileVersions()
             print("Most recent versions of files in data directory:")
             for f in dataFileVMgr.listMostRecent() :
                 print(f"\t{f}")
 
-            self.assertEqual( "a", "a")   #easy test
 
         def test_remote(self):
-
+            """ Example using remote information
+            """
             dataFileVMgr = manageAndCacheDataFiles()
             dataFileVMgr.getRemoteInfo()
             # dataFileVMgr.pprintDataResources(bulk=True)
             dataFileVMgr.updatePrepare()
             dataFileVMgr.cacheUpdate()
             
-            self.assertEqual( "a", "a")   #easy test
 
+        def test_pprint(self):
+            """ Example of pretty printing of remote/cached information
+            """
+            dataFileVMgr = manageAndCacheDataFiles()
+            dataFileVMgr.getRemoteInfo( localOnly = True)
+            dataFileVMgr.pprintDataItem( item="description")
+
+        def test_pprint2(self):
+            """ Example of pretty printing of remote/cached information
+                Check situation where the `item` calls for  subfields 'name' and 'class'
+                of  'organizations'
+            """
+            dataFileVMgr = manageAndCacheDataFiles()
+            dataFileVMgr.getRemoteInfo( localOnly = True)
+            dataFileVMgr.pprintDataItem( item=".*org.*/^(name|class)$")
+
+        def test_pprint3(self):
+            """ Example of pretty printing of remote/cached information
+                Check situation where the `item` calls for  subfields 'name' and 'class'
+                of  'organizations'
+            """
+            dataFileVMgr = manageAndCacheDataFiles()
+            dataFileVMgr.getRemoteInfo( localOnly = True)
+
+            dataFileVMgr.pprintDataItem( item="resource.*/(f.*|title.*)")
 
             
+        def test_pprint4(self):
+            """ Example of pretty printing of remote/cached information.
+                Check situation where the `item` calls for all subfields of
+                organizations
+            """
+            dataFileVMgr = manageAndCacheDataFiles()
+            dataFileVMgr.getRemoteInfo( localOnly = True)
+            dataFileVMgr.pprintDataItem( item=".*org.*/.*")
+            
+            
+        def test_dump(self):
+            """ Example of pretty printing of remote/cached information
+            """
+            dataFileVMgr = manageAndCacheDataFiles()
+            dataFileVMgr.getRemoteInfo( localOnly = True)
+            dataFileVMgr.pprintDataResources( bulk = True)
+
+            
+            
     unittest.main()
+    """ To run specific test use unittest cmd line syntax, eg.:
+           python3 ../source/lib/DataGouvFr.py   DGTest.test_pprint
+
+    """

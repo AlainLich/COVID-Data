@@ -3,9 +3,7 @@
 
 # #  Simple tool to analyze data from www.data.gouv.fr
 # 
-# 
-# 
-# 
+# **Note:** This is a Jupyter notebook which is also available as its executable export as a Python 3 script (therefore with automatically generated comments).
 
 # # Libraries
 
@@ -49,7 +47,7 @@ warnings.filterwarnings('ignore')
 print("For now, reduce python warnings, I will look into this later")
 
 
-# ### Import my own stuff
+# ### Import my own modules
 # The next cell attempts to give user some information if things improperly setup.
 # Intended to work both in Jupyter and when executing the Python file directly.
 
@@ -73,9 +71,14 @@ except Exception as err:
 
 # ## Check environment
 # 
-# It is expected that your working directory is named `JupySessions`, that it has subdirectories `images/*` 
-# where generated images may be stored to avoid overcrowding. At the same level as your working dir
-# there should be directories `../data` for storing input data and `../source` for python scripts.
+# It is expected that:
+# - your working directory is named `JupySessions`, 
+# - that it has subdirectories 
+#    - `images/*` where generated images may be stored to avoid overcrowding. 
+# - At the same level as your working dir there should be directories 
+#    - `../data` for storing input data and 
+#    - `../source` for python scripts.
+#    
 # My package library is in `../source/lib`, and users running under Python (not in Jupyter) should
 # set their PYTHONPATH to include "../source" ( *or whatever appropriate* ).
 
@@ -90,15 +93,31 @@ ImgMgr = ImageMgr(chapdir="Chap01")
 
 # ## Functions
 
-# ## Load from CSV 
-# These csv have been downloaded before!; We check what is in the data directory; for each file, we
-# identify the latest version, and list this below to make sure. This has to do with the version
-# management technique (apparently) used at www.data.gouv.fr.
+# ## Load CSV and XLSX data from remote 
+# The `dataFileVMgr` will manage a cache of data files in `../data`, the data will be downloaded
+# from www.data.gouv.fr using a request for datasets with badge '`covid-19`' if a more recent
+# version is present on the remote site. The meta information is stored/cached  in `../data/.data`
+# as the pickle of a json.
+# 
+# We check what is in the cache/data directory; for each file, we identify the latest version, 
+# and list this below to make sure. The file name will usually contain a time stamp; this has to do with 
+# the version management/identification technique used when downloading from www.data.gouv.fr.
+# 
+# For the files used in this notebook, the latest version is used/loaded irrespective of the
+# timestamp used in the notebook.
 
 # In[ ]:
 
 
-dataFileVMgr = manageDataFileVersions()
+dataFileVMgr = manageAndCacheDataFiles()
+dataFileVMgr.getRemoteInfo()
+dataFileVMgr.updatePrepare()
+dataFileVMgr.cacheUpdate()
+
+
+# In[ ]:
+
+
 print("Most recent versions of files in data directory:")
 for f in dataFileVMgr.listMostRecent() :
     print(f"\t{f}")
@@ -108,6 +127,14 @@ for f in dataFileVMgr.listMostRecent() :
 
 
 last = lambda x: dataFileVMgr.getRecentVersion(x,default=True)
+
+
+# This ensures we load the most recent version, so that it is not required to update the list 
+# below. The timestamps shown in the following sequence will be update by the call to `getRecentVersion`.
+
+# In[ ]:
+
+
 dailyDepCsv    = last("sursaud-covid19-quotidien-2020-04-11-19h00-departement.csv")
 dailyRegionCsv = last("sursaud-covid19-quotidien-2020-04-11-19h00-region.csv")
 dailyFranceCsv = last("sursaud-covid19-quotidien-2020-04-12-19h00-france.csv")
@@ -118,10 +145,13 @@ hospAgeCsv     = last("donnees-hospitalieres-classe-age-covid19-2020-04-11-19h00
 hospNouveauCsv = last("donnees-hospitalieres-nouveaux-covid19-2020-04-11-19h00.csv")
 hospCsv        = last("donnees-hospitalieres-covid19-2020-04-11-19h00.csv")
 hospEtablCsv   = last("donnees-hospitalieres-etablissements-covid19-2020-04-12-19h00.csv")
+weeklyLabCsv   = last("donnees-tests-covid19-labo-hebdomadaire-2020-04-16-10h47.csv")
+dailyLabCsv    = last("donnees-tests-covid19-labo-quotidien-2020-04-17-19h00.csv")
+
 
 S1 = set (dataFileVMgr.listMostRecent())
 S2 =set((dailyDepCsv,dailyRegionCsv,dailyFranceCsv, dailyXlsx, weeklyCsv, 
-         hospAgeCsv, hospNouveauCsv, hospCsv,  hospEtablCsv ))
+         hospAgeCsv, hospNouveauCsv, hospCsv,  hospEtablCsv, weeklyLabCsv, dailyLabCsv  ))
 missing = S1. difference(S2)
 if len(missing) > 0:
     print (f"Missing comparing with most recent files in ../data:")
@@ -156,12 +186,15 @@ data_dailyRegion = read_csvPandas(ad(dailyRegionCsv), error_bad_lines=False,sep=
 data_dailyDep    = read_csvPandas(ad(dailyDepCsv), error_bad_lines=False,sep=",")
 data_dailyFrance = read_csvPandas(ad(dailyFranceCsv), error_bad_lines=False,sep=",")
 data_daily       = read_xlsxPandas(ad(dailyXlsx), error_bad_lines=False,sep=",")
-data_weekly      = read_csvPandas(ad(weeklyCsv), error_bad_lines=False,sep=",")
+data_weekly      = read_csvPandas(ad(weeklyCsv), error_bad_lines=False,sep=";")
 
 data_hospNouveau = read_csvPandas(ad(hospNouveauCsv), error_bad_lines=False,sep=";")
 data_hosp        = read_csvPandas(ad(hospCsv), error_bad_lines=False,sep=";")
-data_hospAge          = read_csvPandas(ad(hospAgeCsv), error_bad_lines=False,sep=";")
-data_hospEtabl        = read_csvPandas(ad(hospEtablCsv), error_bad_lines=False,sep=";")
+data_hospAge     = read_csvPandas(ad(hospAgeCsv), error_bad_lines=False,sep=";")
+data_hospEtabl   = read_csvPandas(ad(hospEtablCsv), error_bad_lines=False,sep=";")
+
+data_weeklyLab   = read_csvPandas(ad(weeklyLabCsv), error_bad_lines=False,sep=";")
+data_dailyLab    = read_csvPandas(ad(dailyLabCsv), error_bad_lines=False,sep=";")
 
 meta_Hebdo       = read_csvPandas(metaHebdoCsv,     clearNaN=True, error_bad_lines=False,sep=";", header=2)
 meta_QuotReg     = read_csvPandas(metaQuotRegCsv, clearNaN=True, error_bad_lines=False,sep=";", header=1)
@@ -195,6 +228,8 @@ dataListDescr = ((data_dailyRegion, "data_dailyRegion"),
                   (data_hosp,"data_hosp"),
                   (data_hospAge,"data_hospAge"),
                   (data_hospEtabl,"data_hospEtabl"),
+                  (data_weeklyLab,"data_weeklyLab"),
+                  (data_dailyLab ,"data_dailyLab"),
                   (meta_Hebdo,"meta_Hebdo"),
                   (meta_QuotReg,"meta_QuotReg"),
                   (meta_QuotFra,"meta_QuotFra"),
@@ -249,6 +284,16 @@ for (dat,name) in dataListDescr:
     if name[0:5]!="meta_": continue
     print(f"\nMeta data in '{name}'\n")
     display(dat)
+
+
+# ## Read the meta data characterising resources on the remote site
+# This is a demo of the capabilities of  class `manageAndCacheDataFile`.
+
+# In[ ]:
+
+
+dataFileVMgr.pprintDataItem( item=".*org.*/^(name|class)$")
+dataFileVMgr.pprintDataItem( item="resource.*/(f.*|title.*)")
 
 
 # ## Let's do some graphics!
@@ -459,6 +504,109 @@ for i in range(len(levAge)):
 
 display(meta_Hosp[[ "Colonne","Description_EN" ]])
 ImgMgr.save_fig("FIG005")
+
+
+# ## Testing : Laboratory data
+# 
+# This concerns testing (I have not found the meta data yet, but column labels are clear enough).
+# The `data_dailyLab` data is split between age classes and departements.
+
+# In[ ]:
+
+
+dl=data_dailyLab
+dlGr = dl.loc[dl["clage_covid"]=="0"].groupby('jour').sum()
+
+painter = figureTSFromFrame(dlGr)
+colOpts = {'nb_test': {"c":"b", "marker":"*"},  
+           'nb_pos':  {"c":"r", "marker":"+"},
+           'nb_test_h': {"c":"b","marker":"o", "linestyle":"--"},  
+           'nb_test_f': {"c":"g","marker":"o", "linestyle":"--"},
+           'nb_pos_h': {"c":"b", "marker":"+"},
+           'nb_pos_f': {"c":"g", "marker":"+"}
+          }
+painter.doPlotBycol()
+painter.setAttrs(colOpts = colOpts,
+                    xlabel  = f"Days since {painter.dt[0]}",
+               title="Whole France laboratory: tested, positive for male(h) and female(f)",
+               legend=True    ) 
+
+ImgMgr.save_fig("FIG006")
+
+
+# In[ ]:
+
+
+dlGr.describe()
+
+
+# Analyze laboratory data according to age
+
+# In[ ]:
+
+
+data_dailyLab.columns
+dataDLab = data_dailyLab.copy()
+
+
+# In[ ]:
+
+
+dataDLab=dataDLab.set_index(["dep","jour",'clage_covid'])
+dhRA = dataDLab[ dataDLab.index.get_level_values(2)!='0' ].unstack('clage_covid')
+dhRAg = dhRA.groupby("jour").sum()
+
+
+# In[ ]:
+
+
+ageClasses = sorted(set(dhRAg.columns.get_level_values(1)))
+print(f"age classes = {ageClasses}")
+
+levCat = sorted(set(dhRA.columns.get_level_values(0)))
+levAge = sorted(set(dhRA.columns.get_level_values(1)))
+subnodeSpec=(lambda i,j:{"nrows":i,"ncols":j})(*subPlotShape(len(levAge),maxCol=6))
+
+print(f"nb age classes:{len(levAge)}\tsubnodeSpec:{subnodeSpec}")
+if len(levAge) != len(ageClasses):
+    raise RuntimeError("Inconsistent values for number of age classes")
+
+
+# In[ ]:
+
+
+colOpts = {'nb_test': {"c":"b", "marker":"*"},  
+           'nb_pos':  {"c":"r", "marker":"+"},
+           'nb_test_h': {"c":"b","marker":"o", "linestyle":"--"},  
+           'nb_test_f': {"c":"g","marker":"o", "linestyle":"--"},
+           'nb_pos_h': {"c":"b", "marker":"+"},
+           'nb_pos_f': {"c":"g", "marker":"+"}
+          }
+
+
+# In[ ]:
+
+
+painter = figureTSFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
+for i in 'ABCDE':
+    cat = meta_Ages.loc[meta_Ages.iloc[:,0]==i].iloc[:,1].values[0]
+    title = f"Labo Tests\nAge: {cat}"
+
+    dfExtract = dhRAg.loc(axis=1)[:,i]
+    # remove the now redundant information labeled 'cl_age90'
+    dfExtract.columns = dfExtract.columns.levels[0]
+    painter.doPlotBycol(dfExtract);
+    
+    painter.setAttrs(colOpts = colOpts,
+                     xlabel  = f"Days since {painter.dt[0]}",
+                     title   = title,
+                     legend  = True    ) 
+    
+    
+    painter.advancePlotIndex()
+
+display(meta_Ages)
+ImgMgr.save_fig("FIG007")
 
 
 # In[ ]:
