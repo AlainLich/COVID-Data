@@ -11,9 +11,10 @@ almost direct transpositions of the notebooks. This is supported by library modu
 
 ## Aim:
 There are many good and interesting contributions on the pages 
-https://www.data.gouv.fr/fr/datasets/donnees-hospitalieres-relatives-a-lepidemie-de-covid-19
+- https://www.data.gouv.fr/fr/datasets/donnees-hospitalieres-relatives-a-lepidemie-de-covid-19
 and
-https://www.data.gouv.fr/en/datasets/donnees-des-urgences-hospitalieres-et-de-sos-medecins-relatives-a-lepidemie-de-covid-19/,
+- https://www.data.gouv.fr/en/datasets/donnees-des-urgences-hospitalieres-et-de-sos-medecins-relatives-a-lepidemie-de-covid-19/,
+
 however this is a very straightforward piece of code, intended mostly to facilitate
 access to the data for testing personal "what-if" hypotheses.
 
@@ -25,14 +26,16 @@ access to the data for testing personal "what-if" hypotheses.
 ![Tests](./JupySessions/images/Chap01/FIG006.jpg)
 
 ## Functionality
-- Jupyter notebook(s): display data 
+- Jupyter notebook(s): display data. Automatically make use of the latest version of the  data provided (locally for now, 
+   next version will also perform update synchronizing with remote site)
 - `DataGrouvFr` Python module :
--- manage a local repository with files from www.data.gouv.fr
-  by handling file version/timestamp in file name
--- automate the transfer of files with badge "covid-19", maintain a local cache of
-   information concerning these files 
+  - manage a local repository with files from www.data.gouv.fr
+  by handling file version/timestamp in file name. 
+  - automate the transfer of files with badge "covid-19", maintain a local cache of
+   information concerning these files. This is performed using the API (`http` based) documented
+  on https://doc.data.gouv.fr/api/reference/#/datasets/list_datasets 
 - `figureHelpers.py` module:
--- some convenience tools to facilitate/automate making `matplotlib` figures.
+ - some convenience tools to facilitate/automate making `matplotlib` figures.
 (Also looking forwards towards ̀seaborn`... after some wait... )
 
    For more information on changes (and bugs), see the git log.
