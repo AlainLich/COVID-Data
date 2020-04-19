@@ -19,6 +19,11 @@ however this is a very straightforward piece of code, intended mostly to facilit
 access to the data for testing personal "what-if" hypotheses.
 
 ## Gallery
+Some legends are in french: 
+- **rad** : retour a domicile : discharged (cumulative)
+- **rea**  : ICU
+- **dc**   : deceased (cumulative)
+- **hosp** : hospitalized
 
 ![Hospital data](./JupySessions/images/Chap01/FIG003.jpg)
 ![Hospital data according to sex](./JupySessions/images/Chap01/FIG004.jpg)
@@ -26,17 +31,16 @@ access to the data for testing personal "what-if" hypotheses.
 ![Tests](./JupySessions/images/Chap01/FIG006.jpg)
 
 ## Functionality
-- Jupyter notebook(s): display data. Automatically make use of the latest version of the  data provided (locally for now, 
-   next version will also perform update synchronizing with remote site)
+- Jupyter notebook(s): display data. Automatically make use of the latest version of the  data provided, it is cached locally 
+   with  update synchronization with remote site (automatic, after prescribed time interval)
 - `DataGrouvFr` Python module :
-  - manage a local repository with files from www.data.gouv.fr
-  by handling file version/timestamp in file name. 
-  - automate the transfer of files with badge "covid-19", maintain a local cache of
-   information concerning these files. This is performed using the API (`http` based) documented
-  on https://doc.data.gouv.fr/api/reference/#/datasets/list_datasets 
+   - manage a local repository with files from www.data.gouv.fr by handling file version/timestamp in file name. 
+   - automate the transfer of files with badge "covid-19", maintain a local cache of
+     information concerning these files. This is performed using the API (`http` based) documented
+      on https://doc.data.gouv.fr/api/reference/#/datasets/list_datasets 
+   - permit some inquiries on the downmoaded/cached meta data describing the data loaded from the remote site
 - `figureHelpers.py` module:
- - some convenience tools to facilitate/automate making `matplotlib` figures.
-(Also looking forwards towards ̀seaborn`... after some wait... )
+   - some convenience tools to facilitate/automate making `matplotlib` figures. (Also looking forwards towards ̀seaborn`... after some wait... )
 
    For more information on changes (and bugs), see the git log.
 
@@ -56,17 +60,6 @@ pip install -U -R requirements.txt
 ```
 
 
-
-## Warning(s)
-This is provided as is, see the LICENSE file.
-
-## References
-- https://github.com/alichnewsky/covid : basic script to work with the Novel Coronavirus (COVID-19) cases 
-      dataset provided by JHU CSSE
-
-https://www.academie-sciences.fr/fr/
-
-   For more information on changes (and bugs), see the git log.
 
 ## install requirement
 ### Python
