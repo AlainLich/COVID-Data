@@ -28,26 +28,43 @@ __license__ = 'MIT License'
 __version__ = '1.0'
 
 from   lib.utilities import *
-import requests, sys, pprint, pickle, time
+import requests, sys, pprint, pickle, time, shutil
 from   collections   import Iterable, Mapping
 import urllib, hashlib
 
 class manageDataFileVersions(object):
     """ For each file name in local directory, find which are different versions of same as 
         indicated in the file name with pattern yyyy-mm-dd-HHhMM. 
+
     """
-    def __init__(self, dirpath="../data"):
-        "dirpath is path relative current working directory"
+    def __init__(self, dirpath ):
+        """
+        Argument "dirpath" is compulsory, must designate a directory where local copies
+                 of files will be / are cached. There is no default on purpose to
+                 avoid unintentional tampering.
+        """
         self.dirpath = dirpath
         if not os.path.isdir(dirpath):
             raise RuntimeError(f"Path {dirpath} not directory")
         self.options = {}
         self._walk()
 
-    datedFileRex = re.compile("""^(?P<hdr>.*[^\d])
-        (?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+)  # Year
-       -(?P<hour>\d+)h(?P<minute>\d+)              # Time
-        (?P<ftr>.*)$""", re.VERBOSE)    
+    datedFileRex = re.compile(
+             """^(?P<hdr>.*[^\d])
+               (( (?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+)    # Year
+                -(?P<hour>\d+)[h-](?P<minute>\d+)             # Time
+               )|
+                 ( (?P<pYear>\d{4})(?P<pMonth>\d{2})(?P<pDay>\d+) # Year yyyymmdd
+                  -(?P<pTime>\d{6})                     # Time in format hhmmss (*)
+               ))
+              (?P<ftr>.*)$
+             """,
+        re.VERBOSE)    
+
+    #  (*) : format observed when downloading  from
+    #        https://doc.data.gouv.fr/api/telecharger-un-catalogue-de-donnees/
+    #
+    #
     
     def _walk(self):
         """ (internal)
@@ -79,9 +96,15 @@ class manageDataFileVersions(object):
             """
             mobj = manageDataFileVersions.datedFileRex.match(filename)
             if mobj:
-               fls = ( int(mobj.groupdict()[z]) for z in  ('year', 'month', 'day','hour','minute') )
+               gdict = mobj.groupdict()
+               if 'pTime' in gdict and gdict['pTime']:
+                   fls = list( int(gdict[z]) for z in  ('pYear', 'pMonth', 'pDay'))
+                   hms = gdict['pTime']
+                   fls.extend( map ( lambda x: int(hms[x:(x+2)]), (0,2,4)))
+               else:
+                   fls = ( int(gdict[z]) for z in  ('year', 'month', 'day','hour','minute'))
                date = datetime.datetime( *fls )
-               gen  =  "!".join(map (lambda x: mobj.groupdict()[x] , ("hdr","ftr")))
+               gen  =  "!".join(map (lambda x: gdict[x] , ("hdr","ftr")))
                return (gen,date)
             else:
                 return None
@@ -109,8 +132,156 @@ class manageDataFileVersions(object):
         else:
                 return self.genDir[self.filDir[file][0]][1]
 
-            
-class manageAndCacheDataFiles(manageDataFileVersions):
+class manageAndCacheBase(manageDataFileVersions):
+
+    def __init__(self, dirpath,**kwdOpts ):
+        manageDataFileVersions.__init__(self, dirpath=dirpath)
+    
+    def getRemoteInfo(self, localOnly=False):
+        """ Load the information describing files on the remote site, either
+            from a local cached copy (in file .cache), or by reloading after the 
+            elapsed time specified by 'CacheValidity'
+
+            Parameter localOnly specifies that remote cache should not be consulted
+        """
+        cacheValid = self._getFromCache(localOnly=localOnly)
+        if not ( localOnly or cacheValid ):
+             self._getRemoteProper()
+
+    def _spaceAvail(self, dirpath) :
+         """ Check the available space in the cache (`dirpath`) where data can be 
+             stored, taking ̀maxDirSz` into account.
+         """
+         used = spaceUsed(dirpath)
+         return self.options['maxDirSz'] - used
+
+    def  cacheUpdate(self):
+          """ Load files from remote if
+                1)  file on remote ( as indicated in the periodically reloaded/otherwise 
+                     cached)    is newer than local file
+                2) file does not exist locally
+
+              preparatory information is stored in attribute `updtList`, may be 
+              None if it has not been posible to access the metadata on the remote
+              server.
+          """
+          if  self.updtList is None:
+              print (f"update of cache not possible, missing metadata and/or updt list")
+              return None
+          
+          return self._cacheUpdate(effector=self._getFromRemote)
+          
+    def  verifyForCacheUpdate(self):
+          self._requiredDiskSz = 0
+          self._cacheUpdate(effector=self._sizeAccounter)
+          if self._requiredDiskSz > 0:
+              pass
+
+    cacheUpdtTimeRex = re.compile("""^
+        (?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+)         # Year
+       .(?P<hour>\d+):(?P<minute>\d+):(?P<seconde>\d+)    # Time
+         """, re.VERBOSE) 
+    def _cacheUpdate(self, effector):
+          """ (internal) 
+                Run the updtList, pass to the effector method entries that should
+                be loaded. 
+                There are 2 alternative effectors:
+                  -  self._getFromRemote: actually obtains and stores the file
+                  -  self._sizeAccounter: accumulates in self._requiredDiskSz the
+                  required disk size to load all the files
+
+                Condition for loading a file:
+                1)  file on remote ( as indicated in the periodically reloaded/otherwise 
+                     cached)    is newer than local file
+                2) file does not exist locally
+          """
+          updtList = self.updtList
+          for entry in updtList:
+              #print(f"ENTRY={entry}")
+              if entry['reason'] == "noLocalCopy":
+                  effector(None, **entry)
+
+              elif entry['reason'] == "ifAbsent":
+                  fname=os.path.join(self.dirpath,entry['fname'])
+                  if not os.path.exists(fname):
+                     effector(None, **entry)      
+
+              elif entry['reason'] == "ifNewer":
+                  genEntry = self.genDir[entry['genKey']]
+                  fname = genEntry[2]
+                  mtime = os.path.getmtime(fname)
+                  mtimeDT = datetime.datetime.fromtimestamp(mtime)
+                  mobj = manageAndCacheDataFiles.cacheUpdtTimeRex.match(entry['modDate'])
+                  if mobj:
+                     fls = ( int(mobj.groupdict()[z])
+                             for z in  ('year', 'month', 'day','hour','minute', 'seconde') )
+                     remoteDT = datetime.datetime( *fls )
+                  else:
+                     raise RuntimeError(f"cannot parse date /{entry['modDate']}/")
+                  if mtimeDT < remoteDT - datetime.timedelta(minutes=5):
+                       effector(remoteDT, **entry)
+
+              else:
+                  raise RuntimeError(f"Bad reason code: {entry['reason']}")
+        
+    def _getFromRemote(self,remoteDT,
+                            reason=None,fname=None, url=None, org=None, checksum=None,
+                            format=None, modDate=None, cachedDate=None,
+                            filesize=None, genKey=None):
+         """ (internal) read from remote using API/http protocol
+         """
+         if remoteDT is None:
+             print(f"remoteDT is None for reason:{reason} fname:{fname}\n!! !!")
+         fullPathname = os.path.join(self.dirpath,fname)
+         with urllib.request.urlopen(url) as furl :
+              with open(fullPathname,"wb") as fwr : 
+                   fwr.write(furl.read())
+         print(f"Wrote file \t'{fullPathname}'\n\tfrom URL:'{url}'")
+
+         chk = self. verifChecksum(fullPathname,checksum)
+         if chk:
+            # update the internal database (useful if same file encountered several times
+            # with different timestamps) 
+            self.filDir[fname]=(genKey,remoteDT)
+            self.genDir[genKey] = (remoteDT, fname, fullPathname) 
+
+            #print(f"FILDIR:{self.filDir}")
+            #print(f"GENDIR:{self.genDir}")
+         return chk
+         
+    def verifChecksum(self, filpath, checksum):
+        """ (internal) verify the checksum if provided from remote (loaded dir. info)
+        """
+        if checksum == None:
+            return
+        if any(map( lambda x: not x in checksum, ('type','value'))):
+            print(f"Type or value entry missing/incorrect in checksum:{checksum}")
+            return False
+        
+        hashType=checksum['type']
+        if hashType not in hashlib.algorithms_available:
+            print(f"Checksum algorithm not available: {hashType} (avail={hashlib.algorithms_available})")
+            return False
+        
+        hasher = hashlib.new(hashType)
+        with open(filpath,"rb") as fread : 
+                   hasher.update(fread.read())
+        hashcode = hasher.hexdigest()
+
+        hOK = hashcode == checksum['value']
+        if not hOK:
+            print(f"Bad checksum for {filpath} comp:{hashcode} reference:{checksum['value']}")
+        return hOK
+    
+    def _sizeAccounter(self,remoteDT,
+                            reason=None,fname=None, url=None, org=None, checksum=None,
+                            format=None, modDate=None, cachedDate=None, genKey=None,
+                            filesize=None):
+         """ (internal) read from remote using API/http protocol
+         """
+         pass
+     
+class manageAndCacheDataFiles( manageAndCacheBase):
     """ Manage a local repository extracted from www.data.gouv.fr:
         - extraction of the  list of files based on criteria conforming to
           the www.data.gouv.fr API
@@ -122,28 +293,28 @@ class manageAndCacheDataFiles(manageDataFileVersions):
 
         For now examples are shown in the test section at end of file (`test_remote`)
     """
-    defaultOpts = {'HttpHDR': 'https://www.data.gouv.fr/api/1',
-                   'ApiInqDataset': 'datasets',
-                   'InqParmsDir' : {"badge":"covid-19", "page":0, "page_size":30},
-                   'CacheValidity':  12*60*60  #cache becomes stale after 12 hours
+    defaultOpts = {'HttpHDR'      : 'https://www.data.gouv.fr/api/1',
+                   'ApiInq'       : 'datasets',
+                   'InqParmsDir'  : {"badge":"covid-19", "page":0, "page_size":30},
+                   'CacheValidity':  12*60*60,  #cache becomes stale after 12 hours
+                   'maxImportSz'  :  5*(2**10)**2,  #5 Mb: max size of individual file load
+                   'maxDirSz'     :  50*(2**10)**2,  #50 Mb: max total cache directory size
                   }
     
-    def __init__(self, dirpath="../data",**kwdOpts ):
-        manageDataFileVersions.__init__(self, dirpath=dirpath)
+    def __init__(self, dirpath,**kwdOpts ):
+        """
+         Arguments:
+               - `HttpHDR` : header of http command, see your http API
+               - `ApiInq`  : API argument
+               - `InqParmsDir` : dict with command API parameters
+               - `maxImportSz` : 5 Mb: max size of individual file load
+               - `maxDirSz`    : 50 Mb: max total cache directory size (.cache file
+                                 storing meta data is not accounted for systematically)
+        """
+        manageAndCacheBase.__init__(self, dirpath=dirpath)
         # by now, the base class initializer has obtained the local filesys information
         setDefaults(self.options, kwdOpts, manageAndCacheDataFiles.defaultOpts)
 
-
-    def getRemoteInfo(self, localOnly=False):
-        """ Load the information describing files on the remote site, either
-            from a local cached copy (in file .cache), or by reloading after the 
-            elapsed time specified by 'CacheValidity'
-
-            Parameter localOnly specifies that remote cache should not be consulted
-        """
-        cacheValid = self._getFromCache(localOnly=localOnly)
-        if not ( localOnly or cacheValid ):
-             self._getRemoteProper()
 
     def _getFromCache(self, localOnly):
         """ (internal) Read from the cached file (a pickle of a json)
@@ -172,16 +343,25 @@ class manageAndCacheDataFiles(manageDataFileVersions):
         return valid
         
     def _getRemoteProper(self):
-          """ Read the information on selected files from the remote site, store
-              it into the .cache file, keep it in the self.data attribute as the
+          """ Read the metadata on selected files from the remote site, store
+              it into the DIRPATH/.cache file, keep it in the self.data attribute as the
               python representation of a json
           """
-          url = "/".join( map (lambda x:self.options[x],('HttpHDR','ApiInqDataset')))
+          spaceAvail = self._spaceAvail(self.dirpath)
+          if spaceAvail < 300*(2**10):
+              print (f"spaceAvail={spaceAvail}, 300K required,  maxDirSz={self.options['maxDirSz']} ")
+              raise RuntimeError(f"Insufficient space in {self.dirpath} to store cached metadata")
+          
+          url = "/".join( map (lambda x:self.options[x],('HttpHDR','ApiInq')))
           resp = requests.get(url=url, params=self.options['InqParmsDir'])
           cde =resp.status_code
+          cdeTxt = requests.status_codes._codes[cde][0]
 
           # will return OK even if thing does not exist
-          cdeTxt = requests.status_codes._codes[cde][0]
+          if cde >= 400:
+               print(f"URL/request={resp.url}\tStatus:{cde}:{cdeTxt}")
+               print("Request to get remote information failed, self.cacheFname may be stale")
+               return
           print(f"URL/request={resp.url}\tStatus:{cde}:{cdeTxt}")
 
           self.data = resp.json()
@@ -191,14 +371,22 @@ class manageAndCacheDataFiles(manageDataFileVersions):
                   pickler.dump(self.data)
                   print(f"Stored pickle in {self.cacheFname}")
 
+          
     _resourceList = ('title','latest','last_modified', 'format', 'checksum' )
     def pprintDataResources(self, bulk=False) :
           """ Pretty print selected information on files from the json; if parameter
               `bulk` is True, the full json information is also shown
+
+              Need to consider the case where we have not been able to load the metadata
           """
+          if not hasattr(self,"data"):
+              print("No meta data available, pretty print impossible")
+              return
+
           prettyPrinter = pprint.PrettyPrinter(indent=4)
           fileList=[]
           resourceSet = set()
+          
           for indata in self.data['data']:
               for resources in indata['resources']:
                   resourceDict = {}
@@ -322,6 +510,11 @@ class manageAndCacheDataFiles(manageDataFileVersions):
 
               preparatory information is stored in attribute `updtList`
           """
+          if not hasattr(self,"data"):
+              print("No meta data available, update preparation impossible")
+              self.updtList = None
+              return None
+
           inStore =  sorted([  k   for k in self.genDir.values()])
           filStore =  sorted([  k   for k in self.filDir.values()])
           
@@ -333,6 +526,7 @@ class manageAndCacheDataFiles(manageDataFileVersions):
                   checksum   = resources['checksum']
                   format     = resources['format']
                   modDate = resources['last_modified']
+                  filesize= resources['filesize']
                   org     = indata['organization']['slug']
                   if format is None:
                       print(f"Skipping '{fname}' fmt:{format} mod:{modDate} org='{org}'")
@@ -350,112 +544,56 @@ class manageAndCacheDataFiles(manageDataFileVersions):
                   
                   updtList.append( { 'reason':reason,'fname':fname, 'url':url, 'org':org,
                                      'checksum':checksum, 'format': format,
-                                     'modDate':modDate,'cachedDate':fdate, 'genKey': gen } )
+                                     'modDate':modDate,'cachedDate':fdate,
+                                     'filesize':filesize,'genKey': gen } )
           self.updtList = updtList
 
+class manageAndCacheFilesDFrame( manageAndCacheBase):
+    """ Manage a local repository where the meta data comes from a DataFrame (in
+        practice loaded from a CSV or an XLS(X)
+        - extraction of the  list of files from a csv/xls into panda dataframe
+        - for local copies of files, permits to access the most recent version 
+          as indicated in base class
+        - management of the local cache directory (TBD: remove redundant files)
 
-
-    cacheUpdtTimeRex = re.compile("""^
-        (?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+)         # Year
-       .(?P<hour>\d+):(?P<minute>\d+):(?P<seconde>\d+)    # Time
-         """, re.VERBOSE) 
-    def cacheUpdate(self):
-          """ Load files from remote if
-                1)  file on remote ( as indicated in the periodically reloaded/otherwise 
-                     cached)    is newer than local file
-                2) file does not exist locally
-
-              preparatory information is stored in attribute `updtList`
-          """
-          prettyPrinter = pprint.PrettyPrinter(indent=4)
-          updtList = self.updtList
-          for entry in updtList:
-              #print(f"ENTRY={entry}")
-              if entry['reason'] == "noLocalCopy":
-                  self._getFromRemote(None, **entry)
-
-              elif entry['reason'] == "ifAbsent":
-                  fname=os.path.join(self.dirpath,entry['fname'])
-                  if not os.path.exists(fname):
-                     self._getFromRemote(None, **entry)      
-
-              elif entry['reason'] == "ifNewer":
-                  genEntry = self.genDir[entry['genKey']]
-                  fname = genEntry[2]
-                  mtime = os.path.getmtime(fname)
-                  mtimeDT = datetime.datetime.fromtimestamp(mtime)
-                  mobj = manageAndCacheDataFiles.cacheUpdtTimeRex.match(entry['modDate'])
-                  if mobj:
-                     fls = ( int(mobj.groupdict()[z])
-                             for z in  ('year', 'month', 'day','hour','minute', 'seconde') )
-                     remoteDT = datetime.datetime( *fls )
-                  else:
-                     raise RuntimeError(f"cannot parse date /{entry['modDate']}/")
-                  if mtimeDT < remoteDT - datetime.timedelta(minutes=5):
-                       self._getFromRemote(remoteDT, **entry)
-
-              else:
-                  raise RuntimeError(f"Bad reason code: {entry['reason']}")
-        
-    def _getFromRemote(self,remoteDT,
-                            reason=None,fname=None, url=None, org=None, checksum=None,
-                            format=None, modDate=None, cachedDate=None, genKey=None):
-         """ (internal) read from remote using API/http protocol
-         """
-         if remoteDT is None:
-             print(f"remoteDT is None for reason:{reason} fname:{fname}\n!! !!")
-         fullPathname = os.path.join(self.dirpath,fname)
-         with urllib.request.urlopen(url) as furl :
-              with open(fullPathname,"wb") as fwr : 
-                   fwr.write(furl.read())
-         print(f"Wrote file \t'{fullPathname}'\n\tfrom URL:'{url}'")
-
-         chk = self. verifChecksum(fullPathname,checksum)
-         if chk:
-            # update the internal database (useful if same file encountered several times
-            # with different timestamps) 
-            self.filDir[fname]=(genKey,remoteDT)
-            self.genDir[genKey] = (remoteDT, fname, fullPathname) 
-
-            #print(f"FILDIR:{self.filDir}")
-            #print(f"GENDIR:{self.genDir}")
-         return chk
-         
-    def verifChecksum(self, filpath, checksum):
-        """ (internal) verify the checksum if provided from remote (loaded dir. info)
-        """
-        if checksum == None:
-            return
-        if any(map( lambda x: not x in checksum, ('type','value'))):
-            print(f"Type or value entry missing/incorrect in checksum:{checksum}")
-            return False
-        
-        hashType=checksum['type']
-        if hashType not in hashlib.algorithms_available:
-            print(f"Checksum algorithm not available: {hashType} (avail={hashlib.algorithms_available})")
-            return False
-        
-        hasher = hashlib.new(hashType)
-        with open(filpath,"rb") as fread : 
-                   hasher.update(fread.read())
-        hashcode = hasher.hexdigest()
-
-        hOK = hashcode == checksum['value']
-        if not hOK:
-            print(f"Bad checksum for {filpath} comp:{hashcode} reference:{checksum['value']}")
-        return hOK
+        For now examples are shown in the test section at end of file (`test_remote`)
+    """ 
+    defaultOpts = {'CacheValidity':  12*60*60,  #cache becomes stale after 12 hours
+                   'maxImportSz'  :  5*(2**10)**2,  #5 Mb: max size of individual file load
+                   'maxDirSz'     :  50*(2**10)**2,  #50 Mb: max total cache directory size
+                  }
     
-        
+    def __init__(self, dirpath,**kwdOpts ):
+        """
+         Arguments:
+               - 'CacheValidity'
+               - `maxImportSz` : 5 Mb: max size of individual file load
+               - `maxDirSz`    : 50 Mb: max total cache directory size (.cache file
+                                 storing meta data is not accounted for systematically)
+        """
+        manageAndCacheBase.__init__(self, dirpath=dirpath)
+        # by now, the base class initializer has obtained the local filesys information
+        setDefaults(self.options, kwdOpts, manageAndCacheDataFiles.defaultOpts)
+
+    def getRemoteInfo(self, localOnly=False):
+        """ Load the information describing files on the remote site, from a local cached
+            copy (in file .cache)
+            Parameter localOnly specifies that remote metadata should not be consulted
+        """
+        raise RuntimeError("Still TBD")
+         
 if __name__ == "__main__":
     import unittest
     import sys
 
     class DGTest(unittest.TestCase):
+        """ First series of test concerns Covid data 
+        """
         def test_baseLocal(self):
             """ Example using local information
             """
 
-            dataFileVMgr = manageDataFileVersions()
+            dataFileVMgr = manageDataFileVersions("../data")
             print("Most recent versions of files in data directory:")
             for f in dataFileVMgr.listMostRecent() :
                 print(f"\t{f}")
@@ -464,7 +602,7 @@ if __name__ == "__main__":
         def test_remote(self):
             """ Example using remote information
             """
-            dataFileVMgr = manageAndCacheDataFiles()
+            dataFileVMgr = manageAndCacheDataFiles("../data")
             dataFileVMgr.getRemoteInfo()
             # dataFileVMgr.pprintDataResources(bulk=True)
             dataFileVMgr.updatePrepare()
@@ -474,7 +612,7 @@ if __name__ == "__main__":
         def test_pprint(self):
             """ Example of pretty printing of remote/cached information
             """
-            dataFileVMgr = manageAndCacheDataFiles()
+            dataFileVMgr = manageAndCacheDataFiles("../data")
             dataFileVMgr.getRemoteInfo( localOnly = True)
             dataFileVMgr.pprintDataItem( item="description")
 
@@ -483,7 +621,7 @@ if __name__ == "__main__":
                 Check situation where the `item` calls for  subfields 'name' and 'class'
                 of  'organizations'
             """
-            dataFileVMgr = manageAndCacheDataFiles()
+            dataFileVMgr = manageAndCacheDataFiles("../data")
             dataFileVMgr.getRemoteInfo( localOnly = True)
             dataFileVMgr.pprintDataItem( item=".*org.*/^(name|class)$")
 
@@ -492,7 +630,7 @@ if __name__ == "__main__":
                 Check situation where the `item` calls for  subfields 'name' and 'class'
                 of  'organizations'
             """
-            dataFileVMgr = manageAndCacheDataFiles()
+            dataFileVMgr = manageAndCacheDataFiles("../data")
             dataFileVMgr.getRemoteInfo( localOnly = True)
 
             dataFileVMgr.pprintDataItem( item="resource.*/(f.*|title.*)")
@@ -503,7 +641,7 @@ if __name__ == "__main__":
                 Check situation where the `item` calls for all subfields of
                 organizations
             """
-            dataFileVMgr = manageAndCacheDataFiles()
+            dataFileVMgr = manageAndCacheDataFiles("../data")
             dataFileVMgr.getRemoteInfo( localOnly = True)
             dataFileVMgr.pprintDataItem( item=".*org.*/.*")
             
@@ -511,14 +649,101 @@ if __name__ == "__main__":
         def test_dump(self):
             """ Example of pretty printing of remote/cached information
             """
-            dataFileVMgr = manageAndCacheDataFiles()
+            dataFileVMgr = manageAndCacheDataFiles("../data")
             dataFileVMgr.getRemoteInfo( localOnly = True)
             dataFileVMgr.pprintDataResources( bulk = True)
 
+
+    class DGTestPopDemo(unittest.TestCase):
             
+        """ First series of test concerns demographic data 
+        """
+        defaultPop = {
+                   'CacheValidity':  12*60*60,       #cache becomes stale after 12 hours
+                   'maxImportSz'  :  2*(2**10)**2,   #5 Mb: max size of individual file load
+                   'maxDirSz'     :  100*(2**10)**2,  #100 Mb: max total cache directory size
+                  }
+
+        def test_remoteDF(self):
+            """ Example using remote information with cached json
+            """
+            dataFileVMgr = manageAndCacheFilesDFrame("../dataPop", ** DGTestPopDemo.defaultPop)
+            dataFileVMgr.getRemoteInfo()
+            # dataFileVMgr.pprintDataResources(bulk=True)
+            dataFileVMgr.updatePrepare()
+            dataFileVMgr.cacheUpdate()
+
             
+
+    class DGTestRegexp(unittest.TestCase):
+            
+        def test_rex1(self):
+            rexList =  (
+             """^(?P<hdr>.*[^\d])
+               (( (?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+)    # Year
+                -(?P<hour>\d+)[h-](?P<minute>\d+)             # Time
+               )|
+                 ( (?P<pYear>\d{4})(?P<pMonth>\d{2})(?P<pDay>\d+) # Year yyyymmdd
+                  -(?P<pTime>\d{6})                     # Time in format hhmmss (*)
+               ))
+              (?P<ftr>.*)$
+             """,
+              )
+
+            strList = (
+                ( "export-dataset-20200314-064905.csv", { 'hdr': 'export-dataset-', 
+			'year': None, 'month': None, 'day': None, 
+                        'hour': None, 'minute': None, 
+                        'pYear': '2020', 'pMonth': '03', 'pDay': '14', 'pTime': '064905',
+                        'ftr': '.csv'
+                }),
+                ( "InseeDep.xls",None),
+                ( "InseeRegions.xls",None),
+                ( "tags-2020-04-20-09-22.csv", {'hdr': 'tags-', 'year': '2020',
+                                                'month': '04', 'day': '20', 'hour': '09',
+                                                'minute': '22',
+                                                'pTime': None,
+                                                'ftr': '.csv'}),
+                ( "donnees-hospitalieres-classe-age-covid19-2020-04-11-19h00.csv",
+                              { 'hdr': 'donnees-hospitalieres-classe-age-covid19-',
+                                'year': '2020', 'month': '04', 'day': '11',
+                                'hour': '19', 'minute': '00',  'ftr': '.csv'})
+             )
+
+            def chk(rex, s):
+                  mobj = rex.match(s)
+                  if mobj:
+                      print(f"{s}\t->\t{mobj.groupdict()}")
+                      return mobj.groupdict()
+                  else:
+                      print(f"{s}\tNOT RECOG")
+                      return None
+
+            def similar(dict1, dict2):
+                if dict1 is None or dict2 is None:
+                    return dict1 == dict2
+                sk1 = set(dict1.keys())
+                sk2 =  set(dict2.keys())
+                retval = True
+                for k in sorted(sk1&sk2):
+                    if dict1[k] !=  dict2[k]:
+                        print(f"difference for key {k} : {dict1[k]} {dict2[k]}")
+                        retval=False
+                return retval
+            
+            for rexS in rexList:
+              rex = re.compile(rexS, re.VERBOSE)
+              print(rex)
+              for s,verif in  strList:
+                  answ = chk(rex,s)
+                  print(f"ANSW:\t{answ}\nREF\t{verif}\n")
+                  self.assertTrue(similar(answ,verif))
+                  
     unittest.main()
     """ To run specific test use unittest cmd line syntax, eg.:
            python3 ../source/lib/DataGouvFr.py   DGTest.test_pprint
-
+                     DGTest
+                     DGTestPopDemo DGTestPopDemo
+    		     DGTestRegexp
     """
+

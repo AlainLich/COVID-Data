@@ -1,0 +1,11 @@
+#
+# We do not perform version control for data
+#
+data/*.csv
+data/*.xls
+data/*.xlsx
+
+#
+# temporaries
+#
+*~

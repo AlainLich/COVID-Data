@@ -108,14 +108,74 @@ def read_xlsxPandas(fname,clearNaN=False, **kwargs):
 
 
 
-def setDefaults(dict, optDict, defaultDict):
+def setDefaults(dict, optDict={}, defaultDict={}, tryDictKey=None):
     """
         Operates on dictionnaries; fills dict with optDict contents, adding defaults
         from defaultDict when absent
+
+        If used, tryDictKey is expected to be a tuple (key,dd); if key is found 
+        in dd (type==dict), then dd[key] is used as a dictionnary to fill dict; 
+        otherwise this argument is ignored.
+        optDict elements override  tryDictKey
+
+        Examples are located in the test section at the end.
     """
+    if tryDictKey is not None:
+        dk,dd = tryDictKey
+        if dk in dd:
+             for (k,v) in dd[dk].items(): 
+               dict[k] = v
     for (k,v) in optDict.items(): 
         dict[k] = v
     for  (k,v) in defaultDict.items():
         if k not in dict:
             dict[k] = v
 
+
+def spaceUsed(dirpath):
+    """ Compute the used space by all files in directory, does not care about symlinks
+        and links causing files to be counted several times. Size of directory entries
+        proper not counted either.
+    """
+    used = 0
+    for entry in os.scandir(dirpath):
+        if entry.is_file():
+            stat_result = entry.stat()
+            used +=  stat_result.st_size
+        elif entry.is_dir():
+            used +=  spaceUsed(entry.path)
+    return used
+
+
+if __name__ == "__main__":
+    import unittest
+    import sys
+
+    class TestDefaults(unittest.TestCase):
+
+        def test1(self):
+            d1  = {}
+            d2  = {}
+            d3  = {}
+            d4  = {}
+            opt1 = {1:1, 2:2}
+            opt2= {1:1, 2:2, 'tyty':"ahhh"}
+            default = {'tyty':'toto'}
+
+            setDefaults(d1,opt1,default)
+            self.assertEqual(d1, {1: 1, 2: 2, 'tyty': 'toto'} )
+            setDefaults(d2,opt2,default)
+            self.assertEqual(d2, {1: 1, 2: 2, 'tyty': 'ahhh'} )
+
+            setDefaults(d3, tryDictKey=("opt", {"opt":{'tyty':'ohh'}}) )
+            self.assertEqual(d3, {'tyty': 'ohh'} )
+            setDefaults(d4, tryDictKey=("opt", {"opt":{'tyty':'ohh'}}),
+                            optDict=opt2)
+            self.assertEqual(d4, {'tyty': 'ahhh', 1:1, 2:2} )
+            
+            
+    unittest.main()
+    """ To run specific test use unittest cmd line syntax, eg.:
+           python3 ../source/lib/utilities.py   DGTest.test_pprint
+
+    """

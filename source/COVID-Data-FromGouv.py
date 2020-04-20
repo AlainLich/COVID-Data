@@ -60,6 +60,7 @@ try:
     from lib.utilities     import *
     from lib.figureHelpers import *
     from lib.DataGouvFr    import *
+    import lib.basicDataCTE as DCTE
 except Exception as err:
     print("Could not find library 'lib' with contents 'DataGouvFr' ")
     if get_ipython() is None:
@@ -109,7 +110,7 @@ ImgMgr = ImageMgr(chapdir="Chap01")
 # In[ ]:
 
 
-dataFileVMgr = manageAndCacheDataFiles()
+dataFileVMgr = manageAndCacheDataFiles("../data")
 dataFileVMgr.getRemoteInfo()
 dataFileVMgr.updatePrepare()
 dataFileVMgr.cacheUpdate()
@@ -294,6 +295,29 @@ for (dat,name) in dataListDescr:
 
 dataFileVMgr.pprintDataItem( item=".*org.*/^(name|class)$")
 dataFileVMgr.pprintDataItem( item="resource.*/(f.*|title.*)")
+
+
+# ## Get some demographics data from INSEE
+# For the time being, these data are obtained / loaded from Insee web site using a manual process and are placed in a different directory, therefore a distinct FileManager is used, and loading this data is done here; for more details see the notebook `Pop-Data-FromGouv.ipy`
+# 
+# Using the base version which does not try to update the "../dataPop" directory
+
+# In[ ]:
+
+
+dataFileVMgrInsee = manageDataFileVersions("../dataPop") 
+inseeDepXLS           ="../dataPop/InseeDep.xls"
+inseeDep            = read_xlsxPandas(inseeDepXLS, error_bad_lines=False,sep=",", sheet_name=1, header=7)
+inseeReg            = read_xlsxPandas(inseeDepXLS, error_bad_lines=False,sep=",", sheet_name=0, header=7)
+
+
+# Now we can display our demographics data (summarized)
+
+# In[ ]:
+
+
+display(inseeDep.iloc[:,4:].sum())
+display(inseeReg.iloc[:,4:].sum())
 
 
 # ## Let's do some graphics!
@@ -607,6 +631,184 @@ for i in 'ABCDE':
 
 display(meta_Ages)
 ImgMgr.save_fig("FIG007")
+
+
+# # Merge COVID and demographics data
+# See the `Pop-Data-FromGouv.ipynb` notebook for more details on the demographics data obtained from
+# INSEE (https://www.insee.fr/fr/accueil). 
+
+# Prepare the data for a database style join/merge, documented on https://pandas.pydata.org/pandas-docs/stable/user_guide/merging.html.
+# First we need to establish "dep" as an index in hospital data: 
+
+# In[ ]:
+
+
+hndDf = data_hospNouveau.copy()
+hndDf.set_index("dep");
+
+
+# Then we extract the demographic information and set index "dep" 
+
+# In[ ]:
+
+
+depStats = inseeDep.iloc[:,[2,3,7,8]].copy()
+cols = depStats.columns.values
+cols[0]="dep"
+depStats.columns = cols
+depStats.set_index("dep");
+
+
+# Now we perform the merge, and group by date and 'départements': 
+
+# In[ ]:
+
+
+hndMerged = PAN.merge(hndDf,depStats, on="dep" ) 
+hndGrMerged=hndMerged.groupby(["jour","dep"]).sum()
+
+
+# For now, look at daily statistics normalized by concerned population (unit= event per million people)
+
+# In[ ]:
+
+
+hndGMJour = hndGrMerged.groupby("jour").sum()
+colLabs = ("incid_hosp", "incid_rea", "incid_dc", "incid_rad")
+for lab in colLabs:
+    hndGMJour[lab+"_rate"] = hndGMJour[lab]/hndGMJour["Population totale"]*1.0e6
+
+
+# And the graph can be readily generated:
+
+# In[ ]:
+
+
+ncolLabs = list ( x+"_rate" for x in colLabs)
+df=hndGMJour.loc[:,ncolLabs]
+colOpts = {'incid_dc_rate'  : {"c":"b","marker":"v"},  
+           'incid_rea_rate' : {"c":"r","marker":"o", "linestyle":"--"},
+           'incid_rad_rate' : {"marker":"+"},
+           'incid_hosp_rate': {"marker":"*"}
+          }
+
+painter = figureTSFromFrame(df)
+painter.doPlot()
+painter.setAttrs(colOpts=colOpts,
+                 xlabel=f"Days since {painter.dt[0]}", 
+                 ylabel="Events per million people",
+                 title="Whole France (Hospital)\nDaily variation in patient status",
+                 legend=True  ) 
+
+PAN.set_option('display.max_colwidth', None)
+display(meta_HospIncid[[ "Colonne","Description_EN" ]])
+ImgMgr.save_fig("FIG008")
+
+
+# In[ ]:
+
+
+
+
+
+# Now we can do the same exercise keeping the 'département' information around:
+
+# In[ ]:
+
+
+hndGMDepJour = hndGrMerged.iloc[:,[0,1,2,3,5]].copy()
+
+
+# In[ ]:
+
+
+colLabs = ("incid_hosp", "incid_rea", "incid_dc", "incid_rad")
+for lab in colLabs:
+    hndGMDepJour[lab+"_rate"] = hndGMDepJour[lab]/hndGMDepJour["Population totale"]*1.0e6
+
+
+# In[ ]:
+
+
+hGMDJExtract = hndGMDepJour.iloc[:,range(5,9)]
+
+
+# ### Looking at correlations (not very interesting, just in case...)
+# Look for correlations, globally over cases ( indexed by data and 'departement'):
+
+# In[ ]:
+
+
+gCorr=hGMDJExtract.corr()
+corrSum={}
+corrSum["global"]= gCorr
+
+
+# Now, do correlations between 'departements' separately for each date:
+
+# In[ ]:
+
+
+gdCorrVec = hGMDJExtract.groupby("jour").corr()
+gdCorrVec.index.names = [ gdCorrVec.index.names[0], "obs"]
+
+
+# And do statistics averaging over 'departements'
+
+# In[ ]:
+
+
+corrSum["depMean"] = gdCorrVec.groupby("obs").mean()
+corrSum["depMax"] = gdCorrVec.groupby("obs").max()
+corrSum["depMin"] = gdCorrVec.groupby("obs").min()
+corrSum["depStd"] = gdCorrVec.groupby("obs").std()
+
+
+# In[ ]:
+
+
+i=8
+for kstat in corrSum.keys():
+    i+=1
+    if kstat == "global":
+        title = "Correlations between events/million people \nindexed by date and 'departement'"
+    else:
+        title = f"Correlations between events/million people accross departements\naveraged over dates:{kstat}"
+    PLT.figure(figsize=(12,12))
+    DCTE.simpleHeatMap(data=corrSum[kstat], title=title)
+    ImgMgr.save_fig(f"FIG{i:03}")
+
+
+# ### Look at the distribution accross areas ('departements')
+# 
+
+# This is simply an effort to get 'departement's by name rather than by number (you were supposed to learn the mapping in school... that was a long time ago... )
+
+# In[ ]:
+
+
+inseeDepLib=inseeDep.iloc[:,[2,3]]
+cl=list(inseeDepLib.columns)
+cl[0]="dep"
+inseeDepLib.columns=cl
+
+
+# In[ ]:
+
+
+hndMerged.columns[2]
+
+
+# In[ ]:
+
+
+for icase in range(2,6):
+  hhn=hndMerged.iloc[:,[6,1,icase]]
+  lwhat = hndMerged.columns[icase]
+  hh = hhn.pivot(index="depL", columns='jour',values=lwhat)
+
+  PLT.figure(figsize=(18,18))
+  DCTE.simpleHeatMap(data=hh, title="hum:"+lwhat)
 
 
 # In[ ]:

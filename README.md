@@ -29,6 +29,8 @@ Some legends are in french:
 ![Hospital data according to sex](./JupySessions/images/Chap01/FIG004.jpg)
 ![Hospital outcomes per age](./JupySessions/images/Chap01/FIG005.jpg)
 ![Tests](./JupySessions/images/Chap01/FIG006.jpg)
+![Tests rel. population](./JupySessions/images/Chap01/FIG008.jpg)
+![Activity rel. population](./JupySessions/images/Chap01/FIG017.jpg)
 
 ## Functionality
 - Jupyter notebook(s): display data. Automatically make use of the latest version of the  data provided, it is cached locally 
@@ -84,7 +86,11 @@ This is provided as is, see the LICENSE file.
 ## References
 - https://github.com/alichnewsky/covid : basic script to work with the Novel Coronavirus (COVID-19) cases 
       dataset provided by JHU CSSE
+- in France
+  - https://www.academie-sciences.fr/fr/: many references
 
-- https://www.academie-sciences.fr/fr/: many references
+  - https://www.eficiens.com/coronavirus-statistiques/#evolution-contamination-france: well represented statistics
 
-- https://www.eficiens.com/coronavirus-statistiques/#evolution-contamination-france: well represented statistics
+- other Covid related sites/developments:
+  - https://github.com/dariocazzani/COVID-19-trends
+  
