@@ -27,13 +27,26 @@ Some legends are in french:
 - **dc**   : deceased (cumulative)
 - **hosp** : hospitalized
 
-| ---------------------------------- | ------------------------------|
-| ![Hospital data](./JupySessions/images/Chap01/FIG003.jpg) | ![Hospital data according to sex](./JupySessions/images/Chap01/FIG004.jpg) |
-| ![Hospital outcomes per age](./JupySessions/images/Chap01/FIG005.jpg) |![Tests](./JupySessions/images/Chap01/FIG006.jpg) |
-| ![Tests rel. population](./JupySessions/images/Chap01/FIG008.jpg) | ![Activity rel. population](./JupySessions/images/Chap01/FIG017.jpg) |
-
-![Activity rel. population\nmost busy departements](./JupySessions/images/Chap01/FIG023.jpg)
-
+<TABLE>
+ <TR><TD COLSPAN="2">Hospital Data</TD> </TR>
+ <TF><TD>All</TD> <TD><CENTER>Split male/female</TD> </TR>
+ <TR><TD> <IMG SRC="./JupySessions/images/Chap01/FIG003.jpg"/></TD> 
+     <TD> <IMG SRC="./JupySessions/images/Chap01/FIG004.jpg"/></TD> 
+ </TR>
+ </TABLE>
+<TABLE>
+    <TR><TD COLSPAN="2"><CENTER>Hospital Data</CENTER></TD> </TR>
+    <TR><TD COLSPAN="2"><CENTER>All , Split according age groups</CENTER></TD> </TR>
+    <TR><TD COLSPAN="2"> <IMG SRC="./JupySessions/images/Chap01/FIG005.jpg"/></TD></TR> 
+    <TR>  <TD COLSPAN="1"><CENTER>Testing</CENTER></TD>  <TD COLSPAN="1">Change in patient status according to population</TD> </TR>
+    <TR> <TD> <IMG SRC="./JupySessions/images/Chap01/FIG006.jpg"/></TD>
+         <TD> <IMG SRC="./JupySessions/images/Chap01/FIG008.jpg"/></TD></TR>
+ </TABLE>
+<TABLE>
+  <TR><TD COLSPAN="1"><CENTER>Activity according to date and area</CENTER></TD> </TR>
+  <TR> <TD> <IMG SRC="./JupySessions/images/Chap01/FIG017.jpg"/></TD> </TR>
+   <TR> <TD> <IMG SRC="./JupySessions/images/Chap01/FIG023.jpg"/></TD> </TR>
+</TABLE>    
 
 ## Functionality
 - Jupyter notebook(s): display data. Automatically make use of the latest version of the  data provided, it is cached locally 
