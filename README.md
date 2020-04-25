@@ -1,6 +1,8 @@
-# Simple python scripts to work with COVID-19 / SARS-cov-19 data provided by Santé publique France
+# Simple Python analysis tools for COVID-19 / SARS-cov-19 data 
+ These scripts are intended to work with COVID-19 / SARS-cov-19
+ data provided by Santé publique France and INSEE.
 
-The data sources used are located:
+The scripts provides for automated update of the data sources used, which are located:
 - https://www.data.gouv.fr/fr/datasets/donnees-hospitalieres-relatives-a-lepidemie-de-covid-19/
 - https://www.data.gouv.fr/en/datasets/donnees-des-urgences-hospitalieres-et-de-sos-medecins-relatives-a-lepidemie-de-covid-19/
 
@@ -20,17 +22,18 @@ access to the data for testing personal "what-if" hypotheses.
 
 ## Gallery
 Some legends are in french: 
-- **rad** : retour a domicile : discharged (cumulative)
+- **rad** : "retour à domicile" : discharged (cumulative)
 - **rea**  : ICU
 - **dc**   : deceased (cumulative)
 - **hosp** : hospitalized
 
-![Hospital data](./JupySessions/images/Chap01/FIG003.jpg)
-![Hospital data according to sex](./JupySessions/images/Chap01/FIG004.jpg)
-![Hospital outcomes per age](./JupySessions/images/Chap01/FIG005.jpg)
-![Tests](./JupySessions/images/Chap01/FIG006.jpg)
-![Tests rel. population](./JupySessions/images/Chap01/FIG008.jpg)
-![Activity rel. population](./JupySessions/images/Chap01/FIG017.jpg)
+| ---------------------------------- | ------------------------------|
+| ![Hospital data](./JupySessions/images/Chap01/FIG003.jpg) | ![Hospital data according to sex](./JupySessions/images/Chap01/FIG004.jpg) |
+| ![Hospital outcomes per age](./JupySessions/images/Chap01/FIG005.jpg) |![Tests](./JupySessions/images/Chap01/FIG006.jpg) |
+| ![Tests rel. population](./JupySessions/images/Chap01/FIG008.jpg) | ![Activity rel. population](./JupySessions/images/Chap01/FIG017.jpg) |
+
+![Activity rel. population\nmost busy departements](./JupySessions/images/Chap01/FIG023.jpg)
+
 
 ## Functionality
 - Jupyter notebook(s): display data. Automatically make use of the latest version of the  data provided, it is cached locally 
@@ -81,7 +84,7 @@ pip install -U -R requirements.txt
 
 
 ## Warning(s)
-This is provided as is, see the LICENSE file.
+This is provided as is, see the LICENSE file. Development is ongoing
 
 ## References
 - https://github.com/alichnewsky/covid : basic script to work with the Novel Coronavirus (COVID-19) cases 

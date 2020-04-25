@@ -6,8 +6,6 @@ __version__ = '1.0'
 
 # (C) A.Lichnewsky, 2018, 2020
 #
-# To support both python 2 and python 3
-# from __future__ import division, print_function, unicode_literals
 
 #  My own library organization (TBD: clean up ?)
 import sys
@@ -49,9 +47,9 @@ from  string import ascii_uppercase
 import basicUtils as BU
 from IPython.display import display
 from basicDataCTE import dataModel
-import  basicDataCTE 
+import basicDataCTE     as    BCTE
 import basicUtils       as    BU
-
+import lib.utilities    as    LIBU
 
 
 
@@ -271,9 +269,9 @@ def test1():
 #			TEST Frame
 #            ++++++++++++++++++++++++++++++++++++++++
 #
-class SMTestCase(ALTestFrame):
+class  DModelTest(ALTestFrame):
         def runTest(self):
-            print ("IN runTest")
+            print ("IN DModelTest")
             #executes any member which name starts with test, don't bother
             #calling
 
@@ -290,15 +288,271 @@ class SMTestCase(ALTestFrame):
                                    1,
                                    redirect=True)
             
+
+class GraphicTest(ALTestFrameGraphics):
+    """ Here we perform test of Seaborn features and of functions derived from
+                them; many tests inspired from Seaborn manual
+    """
+    def start(self):
+        args = {}
+        if "--wait" in arguments:
+           print(f"arguments={arguments}")
+           if "--wait" in arguments and  (arguments["--wait"] is not None ):
+               args["pause"] =  int(arguments["--wait"])
+           self._start(**args)
+           
+    def mkDF(addCat=None,**kwargs):
+            """ Make a dataframe of floats
+            """
+
+            print(f'In mkDF arguments:{arguments}')
+
+            ### pandas.DataFrame.apply: returns a <class 'pandas.core.series.Series'>
+            ###                         w/o .info method etc
+            ### Therefore applymap is used
+            def strOrNan(x):
+                if x < -0.5:
+                    return NP.nan
+                else:
+                    return str(x)
+                
+            GraphicTest.randseed=981  # make output deterministic
+            def myRandom():
+                "This is my deterministic random function, good enough for generating test"
+                GraphicTest.randseed = (GraphicTest.randseed+320)%1024
+                return float(GraphicTest.randseed)/512 - 1.0
+            od = {}
+            LIBU.setDefaults(od, optDict=kwargs, defaultDict={'nc' : 5, 'nl':8,
+                                                              'ai':1,'brand':0.1 })
+            nc,nl,ai,brand = list(map(lambda x: od[x], ("nc","nl","ai","brand")))
+            print(f"parms = {nc,nl,ai,brand}")
+            print(od)
+            array = [ ai*i + brand * myRandom() for i in range(0,nc*nl)]
+            npA   = NP.array(array).reshape((nl,nc))
+            df = PAN.DataFrame( npA,
+                                index  = [ f"row{i:03}" for i in range(1,nl+1)],
+                                columns= [ f"col{i:03}" for i in range(1,nc+1)]
+                                )
+            if addCat:
+                 print("Miaou  (Meow ! )")
+                 if "modulo" in kwargs and kwargs["modulo"]:
+                      imod= kwargs["modulo"]
+                      df.loc[:,"catCol"] = [ f"Meow{(i%imod):03}" for i in range(1,nl+1)]
+                 else:
+                      df.loc[:,"catCol"] = [ f"Meow{i:03}" for i in range(1,nl+1)]
+
+                 if "modulo" in kwargs and kwargs["modulo"]:
+                      imod= kwargs["modulo"]
+                      df.loc["catRow",:nc] = [ f"Miaou{(i%imod):03}" for i in range(1,nc+1)]
+                 else:
+                      df.loc["catRow",:nc] = [ f"Miaou{i:03}" for i in range(1,nc+1)]
+                 df.iloc[-1,-1] = "MIA-MEOW"
+            return df
+
+    def test_DF(self):
+        self.start()
+        df =  GraphicTest.mkDF(False, nl=30, ai=0.02, brand=1, modulo=4)
+        print(f"test_DF\ndf={df}")
+        df.info()
+
+
+        # makes a figure with a subplot for each column showing an histogram of the column
+        # here it is important that all values are numerical 
+        df.hist(bins=5,figsize=(10,8),grid=False)
+        self.show()
+        
+        self.start()
+
+        # here we make a dataframe with categorical data
+        df =  GraphicTest.mkDF(True, nl=30, ai=0.02, brand=1, modulo=4)
+
+        # add a second categorical column
+        df.loc[:,"modCol"]=  df.iloc[:-1,:].loc[:,"col001"].apply (lambda x: int(2.78*x) % 3)
+        df.iloc[-1,-1]  =  "Added!"
+        df1 = df.iloc[:-1,:]
+        # plot a grid of histograms based on the 2 categorical cols of data in col001
+        g = SNS.FacetGrid(df1, col="catCol", row="modCol", margin_titles=True)
+        g.map(PLT.hist, "col001", color="green", bins=3, density=True);
+        
+
+        # plot a grid of scatter plots based on the 2 categorical cols of data in col001
+        # could add hue and changing markers..
+        g = SNS.FacetGrid(df1, col="catCol", row="modCol",  margin_titles=True)
+        g.map(PLT.scatter, "col001", "col002", color="green");
+        
+        self.show()
+        self._setAdd("SNS.FacetGrid","PLT.hist","PLT.scatter","PAN.DataFrame.hist")
+
+    def test_DF1(self):
+        self.start()
+        # here we make a dataframe with categorical data
+        df =  GraphicTest.mkDF(True, nl=30, ai=0.02, brand=1, modulo=4)
+        # add a second categorical column
+        df.loc[:,"modCol"]=  df.iloc[:-1,:].loc[:,"col001"]\
+                                           .apply (lambda x: int(2.78*x) % 3)
+        df.iloc[-1,-1]  =  "Added!"
+        df1 = df.iloc[:-1,:]
+        print(df1)
+        df1.info()
+        df1.describe()
+
+
+        # Still find it difficult to understand what I have got:
+        SNS.set(font_scale=1)
+        g = SNS.catplot(x="col001", y="col002", col="catCol",
+                    data=df1, saturation=.5,
+                    kind="bar", ci=None, aspect=.6)
+        ( g.set_axis_labels("", "Cat Col lab")
+           .set_xticklabels(["Cats", "Chats"])
+           .set_titles("{col_name} {col_var}")
+           .set(ylim=(0, 1))
+          .despine(left=True))  
+        PLT.subplots_adjust(top=0.8)
+        g.fig.suptitle('How a test was made up');
+
+        self.show()
+        self._setAdd("SNS.set", "SNS.catplot", "PLT.subplots_adjust")
+
+    def test_1(self):
+        self.start()
+        df =  GraphicTest.mkDF()
+        print(f"test_1\ndf={df}")
+        df.info()
+        PLT.figure()
+        SNS.boxplot(df)
+
+        PLT.figure()
+        SNS.boxplot(x=df.loc["row002"])
+
+        PLT.figure()
+        SNS.boxplot(y=df.loc[:,["col003", "col001"]])
+
+        PLT.figure()
+        SNS.boxplot(x=df)
+
+        PLT.figure()
+        SNS.boxplot(y=df)
+
+        self.show()
+
+        # This does not look great!
+        BCTE.doBoxPlots( df, ycols = ["col003", "col001"], xcols=["col002","col004"],
+                         stripIt=True)
+        self.show()
+
+        self._setAdd("SNS.boxplot", "BCTE.doBoxPlots")
+        
+        
+    def test_2(self):
+        self._start()
+        df =  GraphicTest.mkDF(True)
+        print(f"test_2\ndf={df}")
+        df.info()
+        PLT.figure()
+        ## make boxplots based on columns
+        SNS.boxplot(data=df.iloc[:-1,:])
+        self.show()
+        
+        self._setAdd("SNS.boxplot")
+
+    @unittest.expectedFailure
+    def test_2F(self):
+        # same as   test_2, shows failure when there are non numerical data in column!
+        self._start()
+        df =  GraphicTest.mkDF(True)
+        print(f"test_2\ndf={df}")
+        df.info()
+        PLT.figure()
+        ## make boxplots based on columns
+        SNS.boxplot(data=df)
+        ## make boxplots based on lines (transpose)
+        PLT.figure()
+        SNS.boxplot(data=df.drop('catCol',axis=1).transpose())
+        self.show()
+        
+        self._setAdd("SNS.boxplot")
+        
+        
+
+
+    def test_3(self):
+        self._start()
+        df =  GraphicTest.mkDF(False)
+        print(f"test_3\ndf={df}")
+        df.info()
+
+        snsDtl={"SNSBox+":{"xtickLabels":{"rotation":45}},
+                "SNSStrip+":{"xtickLabels":{"rotation":45}}}
+        PLT.figure()
+        BCTE.boxStripPlot(data=df,x=None,y="col001",
+                          title="Single box and pts, vertical")
+
+        PLT.figure()
+        BCTE.boxStripPlot(data=df,x="col002",y=None,
+                          title="Single box and pts, horizontal")
+
+        PLT.figure()
+        BCTE.boxStripPlot(data=df,x=None,y=None,
+                          title="Looks OK with boxes and points", **snsDtl)
+        self.show()
+        self._setAdd("BCTE.boxStripPlot")
+
+        
+    def test_4(self):
+        self._start()
+        df =  GraphicTest.mkDF(True, multiple=True)
+        print(f"test_4\ndf={df}")
+        df.info()
+
+        BCTE. densityCatPlot(data=df,x=[f"col{i:03}" for i in range(1,6)], cats="catCol",
+                             title = "Title",
+                             legend = ("legend1", "legend2","legend3"))
+        self.show()
+
+        # Now, this tests the seaborn version, the following gives a 2D density
+        #      https://seaborn.pydata.org/generated/seaborn.kdeplot.html
+        SNS.kdeplot(df.iloc[:,0:2])
+
+        self.show()
+        self._setAdd("BCTE. densityCatPlot", "SNS.kdeplot")
+        
 #
 #            ----------------------------------------
 #			LAUNCHING TESTS 
 #            ++++++++++++++++++++++++++++++++++++++++
 #
 
-if __name__ == '__main__':
+__cmdspecs__  = """"
+       testDataCTE : run tests under unittest environment
 
+Usage: tesDataCTE  [ <testcase> ] [ --wait=<wait> ] [ --parm=<parm>]
+
+Options:
+     --parm=<parm>           pass parameter
+     --wait=<wait>           pass parameter
+
+     Here testcase is the optional testcase in the form of <class> or <class>.<method> 
+     Please use the form --parm val   and NOT --parm=val
+"""
+
+from docopt import docopt
+
+if __name__ == '__main__':
+    # analyze command line args 
+    arguments = docopt(__cmdspecs__)
+    ALTestFrameGraphics.processDocoptArgs(arguments)
+    
+    # Now we need to remove docopt argv arguments which unittest.main() cannot handle 
     print ("Launching test with unittest package/framework")
     r= unittest.main()
     print ("RESULT=", r)
 
+
+#            ----------------------------------------
+#			Specializing tests
+#            ++++++++++++++++++++++++++++++++++++++++
+#
+#   Use syntax:   <python>|<script>   <class>[.<method>]
+#      eg.
+#         python3 ../source/lib/testDataCTE.py  GraphicTest.test_boxplot
+#

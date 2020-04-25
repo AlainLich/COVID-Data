@@ -1,4 +1,4 @@
-# -*- coding: latin-1 -*-
+# -*- coding: utf-8 -*-
 # (C) A.Lichnewsky, 2011, 2013, 2018  
 #
 __author__ = 'Alain Lichnewsky'
@@ -10,6 +10,9 @@ import sys
 import types
 import unittest
 from contextlib import redirect_stdout, redirect_stderr
+
+import matplotlib.pyplot as 	PLT
+
 
 class testInOut:
     """ Object specifying inputs and expected result of a function call
@@ -44,6 +47,7 @@ class ALTestFrame(unittest.TestCase):
      Make a number of trials specified by a list, check outcome (either compare== or
      failure (exception)
     """
+    
     def applyTestList(self, list, func, redirect=False):
         """ apply a series of tests, specified by a testInOut object
         """
@@ -90,8 +94,52 @@ class ALTestFrame(unittest.TestCase):
                                     " ==>> "+ repr(res) +
                                     "\t expect("+ repr(l.expect()) +")" )
                 
+class ALTestFrameGraphics( ALTestFrame):
+    def processDocoptArgs(arguments):
+        """
+         Assist with procession command line arguments before entering
+         ̀unittest.main`, by clearing arguments managed by docopt.
+        """
+        for arg in arguments.keys() :
+            if arg in  sys.argv:
+                idx = sys.argv.index(arg)
+                l= sys.argv[:idx]
+                l. extend(sys.argv[idx+2:])
+                sys.argv = l        
+    
+    def _start(self, **kwdParms):
+        """ Help derived class honor the pause command line option,
+            permits to pass the wait time in a "pause" keyword arg.
+        """
+        if not hasattr(self, "testedSet" ):
+            print("In  GraphicTest.SetUp")
+            self.testedSet=set()
+        # honor the --wait command line parameter    
+        if "pause" not in kwdParms  or not isinstance( kwdParms["pause"], int):
+          self.__pauseParm = None
+        else:
+          self.__pauseParm = int( kwdParms["pause"])
             
-            
+    def __del__(self):
+        print(f"\n***\nset of tested functions:{self.testedSet}\n")
+
+    def _setAdd(self, *args):
+        """ Add a function to the list of tested functions for reporting in __del
+        """
+        for x in args:
+             self.testedSet.add(x)
+
+    def show(self, **kwdargs):
+        """ Show matplotlib figure for a limited duration if self.__pauseParm > 0
+        """
+        if  self.__pauseParm is not None and self.__pauseParm > 0:
+            PLT.show(  block=False)
+            PLT.pause( self.__pauseParm )
+            PLT.close()
+        else:
+            PLT.show(block=True)
+
+          
 
 if __name__ == '__main__':
      ##### ce qui suit est un exemple d'utilisation

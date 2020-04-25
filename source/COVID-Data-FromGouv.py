@@ -211,6 +211,12 @@ meta_Regions = read_csvPandas(metaRegionsCsv, clearNaN=True, error_bad_lines=Fal
 meta_Ages    =  read_csvPandas(metaTranchesAgeCsv, clearNaN=True, error_bad_lines=False,sep=";")
 
 
+# In[ ]:
+
+
+dailyRegionCsv
+
+
 # ## Figure out data characteristics
 
 # In[ ]:
@@ -705,12 +711,6 @@ display(meta_HospIncid[[ "Colonne","Description_EN" ]])
 ImgMgr.save_fig("FIG008")
 
 
-# In[ ]:
-
-
-
-
-
 # Now we can do the same exercise keeping the 'département' information around:
 
 # In[ ]:
@@ -796,19 +796,95 @@ inseeDepLib.columns=cl
 # In[ ]:
 
 
-hndMerged.columns[2]
+colLabs = ("incid_hosp", "incid_rea", "incid_dc", "incid_rad")
+for lab in colLabs:
+    hndMerged[lab+"_rate"] = hndMerged[lab]/hndMerged["Population totale"]*1.0e6    
+
+
+# Here we show the heat map for the most active days in the various 'départements', where activity is measured in events per million population.
+
+# In[ ]:
+
+
+cols=list(hndMerged.columns)
+cols[6]="depL"
+hndMerged.columns=cols
+i=15
+rowsSel={}
+for icase in range(9,13):
+  i+=1
+  hhn=hndMerged.iloc[:,[6,1,icase]]
+    
+  lwhat = hndMerged.columns[icase]
+  hh = hhn.pivot(index="depL", columns='jour',values=lwhat)
+    
+  largeRows=hh.max(axis=1).nlargest(10)
+  smallRows=hh.max(axis=1).nsmallest(10)
+  largeCols=hh.max(axis=0).nlargest(10)
+  smallCols=hh.max(axis=0).nsmallest(10)
+    
+  rowsSel[lwhat] = (icase,largeRows.index,largeCols.index)  
+  hzz=hh.loc[largeRows.index,sorted(largeCols.index)]
+  hmax  = hzz.max().max()
+  hmin  = hzz.min().min()
+
+  PLT.figure(figsize=(18,18))
+  DCTE.simpleHeatMap(data=hzz, 
+                     title="Events per million population:"+lwhat+"\nMost active days", 
+                     SNSArgs={'vmax':hmax, 'vmin':hmin
+                             })
+  #
+  ImgMgr.save_fig(f"FIG{i:03}")
 
 
 # In[ ]:
 
 
-for icase in range(2,6):
+i = 0
+snsDtl={"SNSBox+":{"xtickLabels":{"rotation":90}},
+        "SNSStrip+":{"xtickLabels":{"rotation":90}}}
+for lwhat in rowsSel:  
+  i+=1
+  icase = rowsSel[lwhat][0]
   hhn=hndMerged.iloc[:,[6,1,icase]]
+    
   lwhat = hndMerged.columns[icase]
   hh = hhn.pivot(index="depL", columns='jour',values=lwhat)
+    
+  largeRows=rowsSel[lwhat][1]
+  largeCols=rowsSel[lwhat][2]
+    
+  hzz=hh.loc[largeRows, : ]
+  hmax  = hzz.max().max()
+  hmin  = hzz.min().min()
 
-  PLT.figure(figsize=(18,18))
-  DCTE.simpleHeatMap(data=hh, title="hum:"+lwhat)
+  PLT.figure(figsize=(10,10)) 
+  PLT.title("Event per million people:"+lwhat)
+  title = "Events per million people:"+lwhat
+  PLT.subplot(1,2,1)
+  DCTE.boxStripPlot( data = hzz, x=None, y=None, title=title, **snsDtl)
+  PLT.subplot(1,2,2)
+  DCTE.boxStripPlot( data = hzz.transpose(), x=None, y=None, title=title, **snsDtl)
+    
+  ImgMgr.save_fig(f"FIG{(i+20):03}")  
+
+
+# In[ ]:
+
+
+hzz.transpose()
+
+
+# In[ ]:
+
+
+SNS.boxplot(data=hzz)
+
+
+# In[ ]:
+
+
+SNS.boxplot(data=hzz.transpose())
 
 
 # In[ ]:

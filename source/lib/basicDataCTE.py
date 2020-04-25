@@ -7,16 +7,21 @@ __author__ = 'Alain Lichnewsky'
 __license__ = 'MIT License'
 __version__ = '1.0'
 
+"""
+ This evolved from a first attempt at writing a class (or set thereof) to perform a
+ clean, train, eval cycle on some data for supervised learning
 
-# This is a first attempt at writing a class (or set thereof) to perform a
-# clean, train, eval cycle on some data for supervised learning
-#
-# This is mostly inspired by my first attempt with the Titanic Kaggle data set
-#
-# Credits:
-#  Some of the graphics are inspired by code excerpts from
-#    https://www.kaggle.com/poonaml/titanic-survival-prediction-end-to-end-ml-pipeline
-#  (C) Poonam Ligade,  Titanic, title:"Survival Prediction End to End ML Pipeline"
+ This is mostly inspired by my first attempt with the Titanic Kaggle data set
+
+  For examples, please see the test file testDataCTE.py
+
+ Credits:
+  Some of the graphics are inspired by code excerpts from
+    https://www.kaggle.com/poonaml/titanic-survival-prediction-end-to-end-ml-pipeline
+  (C) Poonam Ligade,  Titanic, title:"Survival Prediction End to End ML Pipeline"
+
+"""
+
 
 #
 #            ----------------------------------------
@@ -565,31 +570,41 @@ def boxStripPlot(**kwargs):
              SNSStrip = additional arguments for call to SNS.stripplot
              PLTArgs  = additional arguments for call to PLT.*
 
-           Note: in library x,y,hue can be passed as vectors, here only as column
-                   names in ``data``, moreover  hue must be passd in SNSBox and/or SNSStrip
+           Note: 1) Whereas in library x,y,hue can be passed as vectors, 
+                    here only as column names in ``data``, 
+                 2) an unused x or y may given a None value
+                 3) moreover  hue must be passed in SNSBox and/or SNSStrip
+
+           Examples in testDataCTE.py
         """
 
-        stripArgs = ("data", "x", "y", "title","SNSBox","SNSStrip","PLTArgs","which")
+        stripArgs = ("data", "x", "y", "title","SNSBox","SNSStrip","PLTArgs","which",
+                     "SNSBox+" ,"SNSStrip+")
         fargs =  dict( (k,v) for k,v in kwargs.items() if ( k not in stripArgs ))
-        if (not "SNSBox" in kwargs.keys()):
-           SNSBox= { }
-        else:
-           SNSBox= kwargs["SNSBox"]
+        SNSBox= { }
+        LIBU.setDefaults(SNSBox, tryDictKey =( "SNSBox", kwargs) )
+        SNSStrip={}
+        LIBU.setDefaults(SNSStrip, tryDictKey =( "SNSStrip", kwargs),
+                       defaultDict= { "jitter":True, "edgecolor":"gray", "color":"red" } )
+        PLTArgs={}
+        LIBU.setDefaults(PLTArgs, tryDictKey =( "PLTArgs", kwargs),
+                       defaultDict= {"fontsize":12})
 
-        if (not "SNSStrip" in kwargs.keys()):
-           SNSStrip= { "jitter":True, "edgecolor":"gray", "color":"red" }
-        else:
-           SNSStrip= kwargs["SNSStrip"]
+        ax1 = SNS.boxplot(x    = kwargs["x"],   y = kwargs["y"], 
+                         data = kwargs["data"], **SNSBox)
+        ax2 = SNS.stripplot(x  = kwargs["x"],   y = kwargs["y"],
+                         data = kwargs["data"], **SNSStrip)
 
-        if (not "PLTArgs" in kwargs.keys()):
-           PLTArgs=  {"fontsize":12}
-        else:
-           PLTArgs= kwargs["PLTArgs"]
+        if "SNSBox+" in kwargs:
+            snsArgs = kwargs["SNSBox+"]
+            if "xtickLabels" in snsArgs:
+                ax1.set_xticklabels(ax1.get_xticklabels(), **snsArgs["xtickLabels"])
 
-        ax = SNS.boxplot(x=kwargs["x"], y=kwargs["y"], 
-                         data=kwargs["data"],**SNSBox)
-        ax = SNS.stripplot(x=kwargs["x"], y=kwargs["y"],
-                   data=kwargs["data"], **SNSStrip)
+        if "SNSStrip+" in kwargs:
+            snsArgs = kwargs["SNSStrip+"]
+            if "xtickLabels" in snsArgs:
+                ax2.set_xticklabels(ax2.get_xticklabels(), **snsArgs["xtickLabels"])
+
         PLT.title(kwargs["title"],**PLTArgs,**fargs)
 
 def densityCatPlot( **kwargs):
@@ -606,6 +621,15 @@ def densityCatPlot( **kwargs):
 
              Note: in library x,y,hue can be passed as vectors, here only as column
                    names in ``data``, moreover  hue must be passd in SNSBox and/or SNSStrip
+
+             NOTE: In statistics, kernel density estimation (KDE) is a non-parametric 
+		   way to estimate the probability density function (PDF) of a random 
+		   variable. This function uses Gaussian kernels and includes automatic
+		   bandwidth determination.
+		   see: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.plot.kde.html
+ 
+              Also, see : https://seaborn.pydata.org/generated/seaborn.kdeplot.html
+
         """
 
         stripArgs = ("data", "x", "cats", "title", "legend", "PLTArgs", "which")
@@ -621,13 +645,13 @@ def densityCatPlot( **kwargs):
         
         categs = data.loc[:, cats].astype('category').cat.categories
         for cg in categs:
-            data.loc[:, x][ data.loc[:, cats] == cg].plot(kind='kde', **PLTArgs)    
+               data.loc[:, x][ data.loc[:, cats] == cg].plot(kind='kde', **PLTArgs)    
+               # sets our legend for our graph.
+               PLT.legend(kwargs["legend"], loc='best') 
+               # plots an axis lable
+               PLT.xlabel(x, **fargs)    
+               PLT.title( kwargs["title"]+ "   " + cg ,  **fargs)
 
-        # plots an axis lable
-        PLT.xlabel(x, **fargs)    
-        PLT.title( kwargs["title"],  **fargs)
-        # sets our legend for our graph.
-        PLT.legend(kwargs["legend"], loc='best') ;
 
 #		++++++++++++++++++++++++++++++++++
 #  		This might provide a better/nicer categorical plot TBD!!!
@@ -698,8 +722,7 @@ def simpleHeatMap(**kwargs):
         data = kwargs["data"]
         PLT.figure(**PLTArgs)
 
-        SNS.heatmap(data, 
-                    square=True,annot=True,**SNSArgs)
+        SNS.heatmap(data, square=True,annot=True,**SNSArgs)
         PLT.title( kwargs["title"], **fargs);
 
 
@@ -716,7 +739,7 @@ def doBoxPlots(data,ycols, xcols= (), stripIt=False):
            boxStripPlot( data = data, y=ycol,x=xcol,title="%s/%s"%(ycol,xcol) )
         else:
           SNS.boxplot(data = data, y=ycol, x=xcol)
-        PLT.show()
+
         
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++        
 #   Outlier detection

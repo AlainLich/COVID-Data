@@ -37,7 +37,7 @@ class manageDataFileVersions(object):
         indicated in the file name with pattern yyyy-mm-dd-HHhMM. 
 
     """
-    def __init__(self, dirpath ):
+    def __init__(self, dirpath,**kwdOpts ):
         """
         Argument "dirpath" is compulsory, must designate a directory where local copies
                  of files will be / are cached. There is no default on purpose to
@@ -46,7 +46,7 @@ class manageDataFileVersions(object):
         self.dirpath = dirpath
         if not os.path.isdir(dirpath):
             raise RuntimeError(f"Path {dirpath} not directory")
-        self.options = {}
+        self.options = kwdOpts
         self._walk()
 
     datedFileRex = re.compile(
@@ -66,30 +66,46 @@ class manageDataFileVersions(object):
     #
     #
     
-    def _walk(self):
+    def _walk(self, prepareCacheRecovery=False):
         """ (internal)
             Walk the file in the dirpath directory (no support for
-            nested dirs at this point). Fill the filDir/genDir 
-            directories where:
+            nested dirs at this point). 
+           
+            if prepareCacheRecovery==False: Fill the genDir directory where:
                - gendir is indexed by filenames with removed timestamps (gen),
 		        permits access to most recent version
-               - fildir is indexed by filename, gives access to gen and date
+            otherwise, make list of files with equivalent generic name, informed
+                        with date (from filestamp and possibly from disk),
+                        this is returned to caller
+
+            Note: filDir has been removed since we need to look into generic file 
+                  names anyhow, since a scenario where we are given a non existing
+                  filename for which equivalent (up to time stamp ) file exist.
         """
         lfiles = os.listdir(self.dirpath)
-        filDir={}
         genDir={}
         for lf in lfiles:
                genDate = self.makeGenDate(lf)
                if genDate is None: continue
                (gen,date) = genDate
-               filDir[lf]=(gen,date)
                fpath = os.path.join( self.dirpath, lf)
-               if (not gen in genDir) or ( date > genDir[gen][0] ):
-                   genDir[gen] = (date,lf,fpath)
-
-        self.filDir = filDir
-        self.genDir = genDir
-
+               if not prepareCacheRecovery:
+                    #here we keep the most recent only
+                    if (not gen in genDir) or ( date > genDir[gen][0] ):
+                        genDir[gen] = (date,lf,fpath)
+               else:
+                    #now we keep the whole stuff, interested in candidates victims
+                    #to be scavenged
+                    if (not gen in genDir):
+                        genDir[gen] = []
+                    statinfo=os.stat(fpath)
+                    genDir[gen].append((date,lf,fpath,statinfo))
+                    
+        if not prepareCacheRecovery:
+            self.genDir = genDir
+        else:
+            return genDir
+            
     def makeGenDate(self,filename):
             """Returns generic filename and file date if file name has std datestamp, 
               None otherwise
@@ -120,22 +136,26 @@ class manageDataFileVersions(object):
     def getRecentVersion(self,file, default=None):
         """
           Return the most recent name of a file; if not found will raise
-          an exception unless a default is given
+          an exception unless a default is given. 
+
+          Since the cache is being handled like a cache, the file may not be existing, 
+          while a more recent version corresponding to the same generic id exists.
         """
-        if file not in self.filDir:
-            if not default:
+        gen = self.makeGenDate(file)
+        if gen[0] in self.genDir:
+            nf = self.genDir[gen[0]][1]
+            return nf
+        if not default:
                raise RuntimeError(f"Unexpected file:'{file}'")
-            elif default is True:
+        elif default is True:
                 return file
-            else:
-                return default
         else:
-                return self.genDir[self.filDir[file][0]][1]
+                return default
 
 class manageAndCacheBase(manageDataFileVersions):
 
     def __init__(self, dirpath,**kwdOpts ):
-        manageDataFileVersions.__init__(self, dirpath=dirpath)
+        manageDataFileVersions.__init__(self, dirpath=dirpath, **kwdOpts)
     
     def getRemoteInfo(self, localOnly=False):
         """ Load the information describing files on the remote site, either
@@ -160,22 +180,86 @@ class manageAndCacheBase(manageDataFileVersions):
                 1)  file on remote ( as indicated in the periodically reloaded/otherwise 
                      cached)    is newer than local file
                 2) file does not exist locally
+                3) there is enough available disk space to stores all the
+                   files
 
-              preparatory information is stored in attribute `updtList`, may be 
+              Preparatory information is stored in attribute `updtList`, may be 
               None if it has not been posible to access the metadata on the remote
               server.
           """
           if  self.updtList is None:
               print (f"update of cache not possible, missing metadata and/or updt list")
               return None
-          
-          return self._cacheUpdate(effector=self._getFromRemote)
-          
+          updtReq = self.verifyForCacheUpdate()
+          if updtReq > 0 or "forceCacheRecovery" in self.options:
+              success = self.cacheSpaceRecovery(updtReq)
+          if  updtReq <= 0 or success :
+              return self._cacheUpdate(effector=self._getFromRemote)
+          else:
+              raise RuntimeError(f"Unable to recover enough disk space (req:{updtReq} bytes)")
+    def  cacheSpaceRecovery(self, requiredSpace, keepNFiles=2):
+         """
+         Walk disk space in self.dirPath, try to recover `requiredSpace`, if true
+         declare success by returning True, othewise return False.
+
+         There might be further parametrization of cache management tactics...
+         """
+         def mbytes(n):
+             m = n/((2**10)**2)
+             return f"{m:.3f}Mb"
+         if  "forceCacheRecovery" in self.options:
+             warnings.warn("Forced cache recovery because of option 'forceCacheRecovery'")
+         print( f"In cacheSpaceRecovery, looking for {requiredSpace} bytes" )
+         fileDir = self._walk( prepareCacheRecovery=True)
+
+         print ("Printing genDir collected for preparing Cache Recovery")
+         totRecup = 0
+         self.scavengeList = []
+         for genEl in sorted(fileDir.keys()):
+             els = list(sorted(fileDir[genEl], key=lambda x: x[0], reverse=True ))
+             recup=[]
+             totfiles = 0
+             i = 0
+             for el in els:
+                   i += 1
+                   fsize = el[3].st_size
+                   totfiles +=  fsize
+                   el =(*el, fsize)
+                   if i > keepNFiles :
+                       recup.append((fsize, el[2]))
+
+             if len(recup ) >= 1:
+                  print(f"\nGen.File:\t'{genEl}'\n\tTo be scavenged:")
+                  for i in range(0,len(recup)):
+                      recEl = recup[i]
+                      print (f"\t\t{mbytes(recEl[0])}\t'{recEl[1]}'")
+                      totRecup += recEl[0]
+                      self.scavengeList.append(recEl[1])
+                  print ("\tKept")
+                  for i in range(0,min(keepNFiles, len(recup))):
+                    print (f"\t\t{mbytes(els[i][3].st_size)}\t'{els[i][2]}'")
+
+         
+         success =  totRecup >= requiredSpace
+         if success:
+             self._removeScavengeList()
+         return success      
+
+    def _removeScavengeList(self):
+        for file in self.scavengeList:
+            os.remove(file)
+         
     def  verifyForCacheUpdate(self):
+          """ returns the amount of disk space that need to be recovered to proceed,
+              0 if enough space is available
+          """
           self._requiredDiskSz = 0
           self._cacheUpdate(effector=self._sizeAccounter)
           if self._requiredDiskSz > 0:
-              pass
+              self.availOnDisk = self._spaceAvail(self.dirpath)
+              if  self._requiredDiskSz >  self.availOnDisk:
+                  return  self._requiredDiskSz -  self.availOnDisk
+          return 0    
 
     cacheUpdtTimeRex = re.compile("""^
         (?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+)         # Year
@@ -242,10 +326,8 @@ class manageAndCacheBase(manageDataFileVersions):
          if chk:
             # update the internal database (useful if same file encountered several times
             # with different timestamps) 
-            self.filDir[fname]=(genKey,remoteDT)
             self.genDir[genKey] = (remoteDT, fname, fullPathname) 
 
-            #print(f"FILDIR:{self.filDir}")
             #print(f"GENDIR:{self.genDir}")
          return chk
          
@@ -516,7 +598,6 @@ class manageAndCacheDataFiles( manageAndCacheBase):
               return None
 
           inStore =  sorted([  k   for k in self.genDir.values()])
-          filStore =  sorted([  k   for k in self.filDir.values()])
           
           updtList=[]
           for indata in self.data['data']:
@@ -607,6 +688,20 @@ if __name__ == "__main__":
             # dataFileVMgr.pprintDataResources(bulk=True)
             dataFileVMgr.updatePrepare()
             dataFileVMgr.cacheUpdate()
+
+        def test_remoteScavenger(self):
+            """ Example of scavenging cache spac
+            """
+            opts= {}
+            setDefaults(opts, {"forceCacheRecovery":False,
+                                    'maxDirSz'     : 30*(2**10)**2},
+                             manageAndCacheDataFiles.defaultOpts)
+            DGTestPopDemo.defaultPop
+            dataFileVMgr = manageAndCacheDataFiles("../data", **opts)
+            dataFileVMgr.getRemoteInfo()
+            # dataFileVMgr.pprintDataResources(bulk=True)
+            dataFileVMgr.updatePrepare()
+            dataFileVMgr.cacheUpdate()
             
 
         def test_pprint(self):
@@ -672,6 +767,9 @@ if __name__ == "__main__":
             # dataFileVMgr.pprintDataResources(bulk=True)
             dataFileVMgr.updatePrepare()
             dataFileVMgr.cacheUpdate()
+
+
+
 
             
 
