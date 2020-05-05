@@ -110,7 +110,7 @@ ImgMgr = ImageMgr(chapdir="Chap01")
 # In[ ]:
 
 
-dataFileVMgr = manageAndCacheDataFiles("../data")
+dataFileVMgr = manageAndCacheDataFilesFRDG("../data")
 dataFileVMgr.getRemoteInfo()
 dataFileVMgr.updatePrepare()
 dataFileVMgr.cacheUpdate()
@@ -159,7 +159,7 @@ if len(missing) > 0:
 for f in missing:
     print(f"\t{f}")
     
-metaHebdoCsv = "../data/metadonnee-urgenceshos-sosmedecin-covid19-hebdo.csv" 
+metaHebdoCsv = "../data/metadonnee-urgenceshos-sosmedecins-covid19-hebdo.csv" 
 metaQuotRegCsv = "../data/metadonnee-urgenceshos-sosmedecin-covid19-quot-reg.csv"
 metaQuotFraCsv = "../data/metadonnee-urgenceshos-sosmedecin-covid19-quot-fra.csv" 
 metaQuotCsv = "../data/metadonnee-urgenceshos-sosmedecin-covid19-quot.csv"
@@ -174,6 +174,21 @@ metaHospEtabl = "../data/donnees-hospitalieres-etablissements-covid19-2020-04-11
 metaSexeCsv = "../data/metadonnees-sexe.csv"
 metaRegionsCsv="../data/regions-france.csv"
 metaTranchesAgeCsv="../data/code-tranches-dage.csv"
+
+
+# In[ ]:
+
+
+ad  = lambda x: "../data/"+x
+S1 = set (map(ad, dataFileVMgr.listMostRecent(nonTS=True)))
+S2 =set((metaHebdoCsv, metaQuotRegCsv,  metaQuotFraCsv, metaQuotCsv, 
+         metaHospservices, metaHospAge, metaHospIncid, metaHosp,  metaHospEtabl, metaRegionsCsv, metaTranchesAgeCsv ))
+missing = S1. difference(S2)
+if len(missing) > 0:
+    print (f"Missing comparing with non timestamped files in ../data:")
+    print ("These may eventually be exploited in other notebooks (e.g. COVID-MoreData-FromGouv)")
+    for f in missing:
+        print(f"\t{f}")
 
 
 # Now load the stuff
@@ -209,12 +224,6 @@ meta_Hosp         = read_csvPandas(metaHosp, clearNaN=True, error_bad_lines=Fals
 meta_Sexe = read_csvPandas(metaSexeCsv, clearNaN=True, error_bad_lines=False,sep=";",header=0)
 meta_Regions = read_csvPandas(metaRegionsCsv, clearNaN=True, error_bad_lines=False,sep=",")
 meta_Ages    =  read_csvPandas(metaTranchesAgeCsv, clearNaN=True, error_bad_lines=False,sep=";")
-
-
-# In[ ]:
-
-
-dailyRegionCsv
 
 
 # ## Figure out data characteristics

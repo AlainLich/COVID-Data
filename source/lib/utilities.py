@@ -14,6 +14,7 @@ import sys, os, re
 from itertools import cycle
 from time import time
 import datetime
+from   enum import Enum, IntFlag
 
 # Better formatting functions
 from IPython.display import display, HTML
@@ -131,7 +132,47 @@ def setDefaults(dict, optDict={}, defaultDict={}, tryDictKey=None):
         if k not in dict:
             dict[k] = v
 
+def isclass(obj):
+    """Return true if the object is a class.
+    """
+    return isinstance(obj, type)
 
+def setOfSubClasses(obj):
+   """ return the subclasses of a class or from the class of an instance
+   """
+   def subClassSet(cls):
+       rSet = set( (cls,) )
+       for c in cls.__subclasses__():
+           rSet = rSet.union(subClassSet(c))
+       return rSet
+
+   if isclass(obj):
+          return  subClassSet(obj)
+   else:
+          return  subClassSet(obj.__class__)
+
+def checkDefaultCompat(cls):
+    if not isclass(cls):
+          cls = cls.__class__
+
+    def checkCompat(cls, sublist):
+        retval = True
+        if hasattr(cls, "defaultOpts"):
+          clsKeys=set(cls.defaultOpts.keys())
+          for sub in sublist:
+               if hasattr(sub, "defaultOpts"):
+                  inter = clsKeys & set(sub.defaultOpts.keys())
+                  if len(inter)>0:
+                      print("Default opts of base and derived classes intersect ")
+                      print(f"\tBase={cls} Derived={sub} \n\t intersection:{inter}")
+                  retval = False
+        return retval
+
+    for sub in setOfSubClasses(cls).union((cls,)):
+       propersub = setOfSubClasses(sub)-set((sub,)) 
+       print(f"Check compat {sub} with {propersub}")
+       return checkCompat(sub,propersub)
+       
 def spaceUsed(dirpath):
     """ Compute the used space by all files in directory, does not care about symlinks
         and links causing files to be counted several times. Size of directory entries
@@ -146,6 +187,101 @@ def spaceUsed(dirpath):
             used +=  spaceUsed(entry.path)
     return used
 
+
+class rexTuple(object):
+     """
+         Used to encapsulate regexp, or set regexp as described in  _pprintDataItem:
+
+         Item syntax is <field>('/'<field>)+, where each field is either a
+              plain string, a regular expression for module `re` or a set of
+              regular expressions
+              - a set of (generalized) regular expressions corresponds to the syntax 
+                <strOrRe>$$<strOrRe>[$$<strOrRe>] where strOrRe can be either a
+                plain string or a regexp
+              - a regexp is recognized by including one of the characters '*+()'
+              - '/' is reserved as a field separator, must not be used inside a field
+              - a field which is not a regexp (ie. a plain string) will be matched using
+                equality
+              
+              A)Item matches the first substructure accessed by a list of nested
+                identifiers (eg. nested in the representation of a json structure) 
+                where the first field matches the first identifier,... etc
+              B)When a set delimited by '$$' is used:
+                  i)  the first matches an item, if not found, we stop here
+                  ii) the search at same level is performed for all items that match
+                      the second item
+                  iii) for each the value associated with each item in ii) is screened
+                      with the third pattern.
+
+     """
+     class TypeRex(Enum):
+         REXSTR    = 1
+         REX       = 2
+
+     class TypeTuple(IntFlag):
+         MATCH      = 1
+         MLINK      = 2
+         MLINKCHECK = 4
+
+     def __init__(self, reStr): 
+         self.numRex = 0
+         self.tryReSplitCompile(reStr)
+
+     def _rexCat(self, rex):
+         if isinstance(rex, str):
+             return rexTuple.TypeRex.REXSTR
+         else:
+             return rexTuple.TypeRex.REX
+
+     def __str__(self):
+         r = f"<{type(self)}>: l={self.numRex}, {self.rexTypes}, {self.rexList}"
+         return r
+
+     ppItemRex = re.compile("[*+()]")
+     def _tryReCompile(s):
+          retval = s
+          if  rexTuple.ppItemRex.search(s):
+              try:
+                retval =  re.compile(s)
+              except Exception as err:
+                  print(f"Rejected regexp:'{s}': {err}")
+                  retval = s
+          return retval
+
+     def tryReSplitCompile(self, reStr):
+            rexs =  reStr.split("$$")
+            print (f"\twe need to re.compile:{rexs}")
+            comp = map (rexTuple._tryReCompile  , rexs)
+            self.rexList  = list(comp)
+            self.rexTypes = list( map ( self._rexCat, self.rexList ))
+            self.numRex   = len( self.rexList )
+
+
+     def genMatch(self,st, tm = TypeTuple.MATCH):
+         nrex = (tm-1)
+         if nrex == 3 :
+             nrex=2
+         if nrex >= self.numRex:
+             raise RuntimeError(f"Requested tm={tm} not compatible with rexvector len={len(self.rexList)}=={self.numRex}")
+
+         rex = self.rexList[nrex]
+         if isinstance(rex,str):
+             return rex == st
+         else:
+             return rex.match(st)
+
+class rexTupleList(object):
+    """ Encapsulate a list of rexTuple as representing a 'xxx/xxx/xx' expression
+        as described above
+    """
+    def __init__(self, s):
+        self.lstRex = list( map ( rexTuple, s.split("/")))
+
+    def __getitem__(self,idx):
+        return  self.lstRex[idx]
+
+    def __len__(self):
+        return len(self.lstRex)
 
 if __name__ == "__main__":
     import unittest

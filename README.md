@@ -21,15 +21,18 @@ however this is a very straightforward piece of code, intended mostly to facilit
 access to the data for testing personal "what-if" hypotheses.
 
 ## Gallery
-Some legends are in french: 
-- **rad** : "retour à domicile" : discharged (cumulative)
-- **rea**  : ICU
-- **dc**   : deceased (cumulative)
-- **hosp** : hospitalized
+
+<TABLE>
+ <TR><TD COLSPAN="3">Some legends are in french: </TD> </TR>
+ <TR><TD >rad</TD> <TD >retour à domicile</TD><TD >discharged (cumulative)</TD></TR>
+ <TR><TD >rea</TD> <TD >réanimation</TD><TD >ICU</TD></TR>
+ <TR><TD >dc</TD> <TD >décédé</TD><TD >deceased (cumulative)</TD></TR>
+ <TR><TD >hosp</TD> <TD >hospitalisé</TD><TD > hospitalized</TD></TR>
+</TABLE>
 
 <TABLE>
  <TR><TD COLSPAN="2">Hospital Data</TD> </TR>
- <TF><TD>All</TD> <TD><CENTER>Split male/female</TD> </TR>
+ <TF><TD>All</TD> <TD><CENTER>Split male/female</CENTER></TD> </TR>
  <TR><TD> <IMG SRC="./JupySessions/images/Chap01/FIG003.jpg"/></TD> 
      <TD> <IMG SRC="./JupySessions/images/Chap01/FIG004.jpg"/></TD> 
  </TR>

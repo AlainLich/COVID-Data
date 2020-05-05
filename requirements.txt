@@ -1,14 +1,18 @@
+ IPython
  docopt
  hashlib
+ lxml
  matplotlib
+ networkx
  numpy
  pandas
  pprint
+ rdflib
  requests
  scipy
  seaborn
+ sklearn
  unittest
  urllib
  xlrd
- IPython
- sklearn
+ 
