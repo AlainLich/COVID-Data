@@ -10,6 +10,11 @@ import requests, sys, pprint, pickle, time, shutil
 from   collections   import Iterable, Mapping
 import urllib, hashlib
 
+import pandas 		 as 	PAN
+
+from rdflib import Graph, Literal, BNode, Namespace,  RDF, URIRef
+from rdflib.namespace import NamespaceManager
+
 from lib.DataMgr import *
 import lib.RDFandQuery as RDFQ
 
@@ -43,6 +48,7 @@ class manageAndCacheDataFilesRDF(  manageAndCacheDataFiles):
           self._getRemoteMetaFromServer()
           # we integrate the prepareMeta functions; need to detect if LIMIT was in effect
           # and possibly iterate here (merging RDF; also what do we put in the pickle ?)
+          # For now, increase limit, and see what happens
           self.prepareMeta(fromCache=False)
           
           self.metadata["pickleTS"]= time.strftime("Pickled at :%Y-%m-%d %H:%M:%S",
@@ -59,8 +65,13 @@ class manageAndCacheDataFilesRDF(  manageAndCacheDataFiles):
         
     def _getRemoteMetaFromServer(self):
 
-          query = self._buildSparql()
-        
+          query = self._buildRemoteSparql()
+
+          hasher = hashlib.sha256()
+          self.metadata["HTTP:Query:Sparql"]=query
+          hasher.update(query.encode('utf-8'))
+          self.metadata["HTTP:Query:sha256"]= hasher.hexdigest()
+          
           if 'HttpRQT' in self.options and  self.options['HttpRQT'] != 'POST': 
               raise NotImplementedError("Only POST method available for RDF")
           else:
@@ -103,11 +114,13 @@ class manageAndCacheDataFilesRDF(  manageAndCacheDataFiles):
         optdict = {"--debug":"debug" in self.options and  self.options["debug"]}
 
         ofn = None
+        qhashFn = None
         if "cachefileRDF" in self.options:
             ofn =  self.options["cachefileRDF"]
         elif "cacheFname" in self.options:
             spl = os.path.splitext(self.options["cacheFname"])
             ofn = os.path.join(self.dirpath, spl[0]+".prdf" )
+            qhashFn =  os.path.join(self.dirpath, spl[0]+".qhash" )
             self.options["cachefileRDF"] = ofn
 
         self.dataQuery = RDFQ.QueryDispatcher( optdict )
@@ -122,7 +135,11 @@ class manageAndCacheDataFilesRDF(  manageAndCacheDataFiles):
             if ofn is not None: 
                    xmlParser.outputSerial(ofn, serFmt="xml")
                    sys.stderr.write(f"Wrote generated rdf (xml) on {ofn}\n")
-                   
+            if qhashFn is not None:
+                with open(qhashFn,"w") as qhFile:
+                    qhFile.write("QUERY:HASH-SHA256\n")
+                    qhFile.write(self.metadata["HTTP:Query:sha256"])
+                    qhFile.write("\n")              
             self.dataQuery.initFromXMLtoRDF( xmlParser, copy = None)
             
     def pprintDataResources(self, bulk=False) :
@@ -185,34 +202,45 @@ class manageAndCacheDataFilesRdfEU(  manageAndCacheDataFilesRDF):
         setDefaults(self.options, kwdOpts, manageAndCacheDataFilesRdfEU.defaultOpts)
                
 
-    def _buildSparql(self):
+    def _buildRemoteSparql(self):
+        """ Build SPARQL that will be shipped to remote site via protocol supported by
+            OAI / OpenAPI-Specification  (https://github.com/OAI/OpenAPI-Specification/)
+        """
         # prepare for handling request customization
-        print(f"In {self.__class__}._buildSparql\t available options:\n\t{sorted(self.options.keys())}")
+        print(f"In {self.__class__}._buildRemoteSparql\t available options:\n\t{sorted(self.options.keys())}")
 
         # for now a boiler plate request
-        rqt = """PREFIX dcat: <http://www.w3.org/ns/dcat#>
+        # to experiment : https://data.europa.eu/euodp/fr/linked-data
+        rqt = """
+PREFIX http: <http://www.w3.org/2011/http#>
+PREFIX dcat: <http://www.w3.org/ns/dcat#>
 PREFIX odp:  <http://data.europa.eu/euodp/ontologies/ec-odp#>
 PREFIX dc: <http://purl.org/dc/terms/>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 
-SELECT  ?DatasetTitle  ?Publisher ?ResourceDescription 
-WHERE { graph ?g  {?DatasetURI    a        dcat:Dataset; 
-                   dc:publisher   ?Publisher; 
-                   dc:title ?DatasetTitle; 
-                   dc:language ?lang;
-                   dc:modified ?mod;
-                   dcat:distribution ?Resource. 
-                   ?Resource dc:description ?ResourceDescription. 
-        FILTER (regex(?DatasetTitle,"covid", "i")) 
-      }
-  } LIMIT 10
-
-## Experiment : https://data.europa.eu/euodp/fr/linked-data
-
+SELECT distinct ?g ?title ?dsURI ?DatasetTitle ?Publisher ?dloadurl ?lang ?issue ?mod ?source ?sz ?rissue ?fmt ?Resource ?ResourceDescription 
+WHERE { GRAPH ?g { filter regex(?title, 'COVID', 'i'). 
+                   FILTER langMatches( lang(?title), "EN" ).
+                   ?dsURI    a        dcat:Dataset.
+                   ?dsURI    dc:title ?title .
+                   ?dsURI    dc:publisher   ?Publisher . 
+                   ?dsURI    dc:title ?DatasetTitle . 
+                   OPTIONAL { ?dsURI    dc:language ?lang. }
+                   OPTIONAL { ?dsURI    dc:modified ?mod. }    # rare
+                   OPTIONAL { ?dsURI    dc:issued   ?issued. }  # rare
+                   ?dsURI    dcat:distribution ?Resource.
+                   OPTIONAL { ?Resource dc:description ?ResourceDescription. }
+                   OPTIONAL { ?Resource  dcat:downloadURL ?dloadurl. }
+                   OPTIONAL { ?Resource  dcat:byteSize ?sz. }
+                   OPTIONAL { ?Resource  dc:format     ?fmt . }
+                   OPTIONAL { ?Resource  dc:issued     ?rissue. }
+        }  
+} 
+  ORDER BY ?mod ?title ?fmt
+  LIMIT 200
+  OFFSET 0
 """
-
-        
         return rqt
 
     def updatePrepare(self):
@@ -226,50 +254,208 @@ WHERE { graph ?g  {?DatasetURI    a        dcat:Dataset;
           if not hasattr(self,"dataQuery"):
               print("No meta data available in self.dataQuery, update preparation impossible")
               raise RuntimeError("no meta information (RDF form) in self.dataQuery")
-              # self.updtList = None          #kept from more permissive times ?
-              # return None
-
+ 
           inStore =  sorted([  k   for k in self.genDir.values()])
-          updtList=[]
 
-# this shows the format of what we have to assemble
-#          updtList.append( { 'reason':reason,'fname':fname, 'url':url, 'org':org,
-#                                     'checksum':checksum, 'format': format,
-#                                     'modDate':modDate,'cachedDate':fdate,
-#                                     'filesize':filesize,'genKey': gen } )
+          queryBuild = QueryBuildFindDownloads( nmgr=self.dataQuery.NMgr )
+          query      = queryBuild.build()
+
+          if  "debug" in self.options and  self.options["debug"]:
+              print(f"About to query local db with SPARQL:\n{query}")
+
+          queryReturns = self.dataQuery.query(query)
+
+          if  "debug" in self.options and  self.options["debug"]:
+              queryBuild.showReturns(queryReturns) 
+
+          self.metaTable = queryBuild.tabulate(queryReturns)
+          self.metaTable.columns = map(lambda x:str(x), self.metaTable.columns)
+          self._mkUpdtlistFromTbl()
+
+    _updtEntryFlds = ('reason', 'fname', 'url', 'org', 'checksum', 'format',
+                         'modDate', 'cachedDate', 'filesize', 'genKey')
           
-          self.updtList = updtList
+    def _mkUpdtlistFromTbl(self):
+        # this shows the format of what we have to assemble
+        #          updtList.append( { 'reason':reason,'fname':fname, 'url':url, 'org':org,
+        #                                     'checksum':checksum, 'format': format,
+        #                                     'modDate':modDate,'cachedDate':fdate,
+        #                                     'filesize':filesize,'genKey': gen } )
+        updtList = []
+        mtable = self.metaTable.copy()
+        
+        #iterate over portions of table pertaining to same download URL
+        gb = mtable.groupby('dloadurl')
+        for (url,dfExtract) in gb:
+            updtEntry = { x:None for x in manageAndCacheDataFilesRdfEU._updtEntryFlds}
+            updtEntry['url'] = str(url)
 
-if False:          
+            fn    = dfExtract['dsURI'][0].split("/")[-1]
+            ftype = dfExtract['fmt'][0].split("/")[-1].lower()
+            updtEntry['fname']  = fn + '.' + ftype
+            updtEntry['genKey']  = fn + '.' + ftype
+            updtEntry['format'] = ftype
 
-          for indata in self.data['data']:
-              for resources in indata['resources']:
-                  fname   = resources['title']
-                  url     = resources['latest']
-                  checksum   = resources['checksum']
-                  format     = resources['format']
-                  modDate = resources['last_modified']
-                  filesize= resources['filesize']
-                  org     = indata['organization']['slug']
-                  if format is None:
-                      print(f"Skipping '{fname}' fmt:{format} mod:{modDate} org='{org}'")
-                      continue
-                  genDate = self.makeGenDate(fname)
-                  if genDate is None:
-                      gen,fdate = (None,None)
-                      reason="ifAbsent"         # no generic id:filename without timestamp
-                  else:
-                      gen,fdate  = genDate
-                      if gen in self.genDir:
-                          reason="ifNewer"
-                      else:
-                          reason="noLocalCopy"
-                  
-                  updtList.append( { 'reason':reason,'fname':fname, 'url':url, 'org':org,
-                                     'checksum':checksum, 'format': format,
-                                     'modDate':modDate,'cachedDate':fdate,
-                                     'filesize':filesize,'genKey': gen } )
-          self.updtList = updtList
-
-
+            updtEntry['org']   =  str( dfExtract['Publisher'][0] )
+            updtEntry['reason'] = "ifAbsent"   # not optimal, TBD
+                    
+            updtList.append(updtEntry)
+        
+        
+# ? reasons : "ifAbsent"  : no generic id:filename stripped of timestamp
+#             "ifNewer"   : remote file is newer
+#             "noLocalCopy": no file on board
+# 
+# * fname   : local file name
+# * url     : download url
+# * format  :
+#   modDate :     rarely avail
+#   cachedDate:   apparently unused at this point, could be date of file
+#   org:Publisher
+#   checksum : None
+#   filesize: sz when avail ?
+# * genKey : filename stripped of timestamp
+        
+        self.updtList = updtList
           
+
+class QueryBuilder(object):
+    """ A class to facilitate building queries against the RDF, will use subclasses
+        for specialization/parametrization
+    """
+    def __init__(self, **kwdOpts):
+        if "nmgr" in kwdOpts:
+            self.NMgr = kwdOpts["nmgr"]
+            if not isinstance( self.NMgr, NamespaceManager):
+                raise RuntimeError(f'Bad type for arg nmgr: {type(self.NMgr)}')            
+            
+    def build(self):
+        self.q =  QueryBuilder.pfxHdr + self._q
+        return self.q
+
+    def showReturns(self, returned):
+          print(f"Query returned {len(returned)} entries")
+          for x in returned:
+              print(x)
+              
+    def tabulate(self, returned):
+        """ return the query results in the form of a Panda.DataFrame
+        """
+        raise NotImplementedError("This method must be defined in a derived class")
+    
+    pfxHdr = """
+PREFIX http: <http://www.w3.org/2011/http#>
+PREFIX dcat: <http://www.w3.org/ns/dcat#>
+PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX res:  <http://www.w3.org/2005/sparql-results#>
+PREFIX odp:  <http://data.europa.eu/euodp/ontologies/ec-odp#>
+PREFIX dc:   <http://purl.org/dc/terms/>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX N:    <http://localhost/added>
+PREFIX X2R:  <http://localhost/XMLattToRDF>
+"""
+
+class QueryBuildFindDownloads(QueryBuilder):
+    def __init__(self, **kwdOpts):
+         QueryBuilder.__init__(self, **kwdOpts)
+         self.q =  QueryBuildFindDownloads._q
+
+    _q = """   # Walk solution sets from the top
+SELECT distinct ?solNodeId ?bindId ?varname ?value  ?pred ?pvalue
+WHERE { ?parent  res:solution        ?sol .
+        ?sol     X2R:nodeID          ?solNodeId.
+        ?sol     res:binding         ?bind .
+        ?bind    X2R:nodeID          ?bindId.
+        ?bind    res:variable        ?var  .
+        ?var     N:text              ?varname .
+        ?bind    res:value           ?val .
+        ?val     ?pred               ?pvalue .
+        OPTIONAL { ?val     N:text              ?value . }
+
+        # The following constrains to entries which have a downloadURL
+        ?sol     res:binding         ?chkBind.
+        ?chkBind res:variable        ?chkVar.
+        ?chkVar  N:text              ?chkVarname . 
+        FILTER   regex(?chkVarname,'^(dloadurl)$','i') .
+} 
+  ORDER BY ?solNodeId ?bindId ?varname ?value ?pred ?pvalue
+"""
+
+         
+    _qUnused = """   # Walk solution sets from the top
+SELECT distinct ?solNodeId ?bindId ?varname ?value  ?pred ?pvalue
+WHERE { ?parent  res:solution        ?sol .
+        ?sol     X2R:nodeID          ?solNodeId.
+        ?sol     res:binding         ?bind .
+        ?bind    X2R:nodeID          ?bindId.
+        ?bind    res:variable        ?var  .
+        ?var     N:text              ?varname .
+        ?bind    res:value           ?val .
+        ?val     ?pred               ?pvalue .
+        OPTIONAL { ?val     N:text              ?value . }
+
+        # The following constrains to entries which have a downloadURL
+        ?sol     res:binding         ?chkBind.
+        ?chkBind res:variable        ?chkVar.
+        ?chkVar  N:text              ?chkVarname . 
+        FILTER   regex(?chkVarname,'dload','i') .
+} 
+  ORDER BY ?solNodeId ?bindId ?varname ?value ?pred ?pvalue
+"""
+
+    _qUnused1 = """   # Reduces output for debugging
+SELECT distinct ?solNodeId ?bindId ?varname ?value  ?pred ?pvalue
+WHERE { ?parent  res:solution        ?sol .
+        ?sol     X2R:nodeID          ?solNodeId.
+        ?sol     res:binding         ?bind .
+        ?bind    X2R:nodeID          ?bindId.
+        ?bind    res:variable        ?var  .
+        ?var     N:text              ?varname .
+        ?bind    res:value           ?val .
+        ?val     ?pred               ?pvalue .
+        OPTIONAL { ?val     N:text              ?value . }
+        FILTER regex(?solNodeId,'^r9$','i') .
+
+} 
+  ORDER BY ?solNodeId ?bindId ?varname ?value ?pred ?pvalue
+"""
+
+    def tabulate(self, returned):
+        """ return the query results in the form of a Panda.DataFrame
+        """
+        curSolNId = None
+        curBindId = None
+        df = PAN.DataFrame()
+
+        rowAsDict = {}
+        for r in returned:
+            solNodeId, bindId, varname, value,  pred, pvalue  = r
+
+            if solNodeId != curSolNId:
+                if len(rowAsDict) != 0:
+                    df = df.append(rowAsDict, ignore_index=True)
+                curSolNId = solNodeId
+                rowAsDict = {}
+
+            qn = self.NMgr.qname(pred)
+            if qn == 'rdf:type':
+                    continue
+            col = varname
+            if col in rowAsDict or qn not in  ("N:text", "X2R:resource" ):
+               qns = qn.split(":")[-1]
+               col = varname+"@"+qns
+               
+            rowAsDict[col] = pvalue
+
+        if len(rowAsDict) != 0:
+            df = df.append(rowAsDict, ignore_index=True)
+
+        return df
+    
+
+  
+
+
+
+  

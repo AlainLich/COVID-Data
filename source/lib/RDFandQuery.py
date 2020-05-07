@@ -23,6 +23,7 @@ from rdflib import XSD, util
 from rdflib import Graph, Literal, BNode, Namespace,  RDF, URIRef
 from rdflib.namespace import NamespaceManager
 from lxml import etree 
+import pyparsing
 
 import lib.RDFNameSpaces as RDFNS
 
@@ -238,7 +239,6 @@ class XMLtoRDF(WithRDFSerialize):
         def addGraph(triplet):
              dd = [ f"{type(xx)}{xx}" for xx in triplet]
              ee = '\n\t\t'.join(dd)
-             print(f"triplet:\t{ee}\n")
              try:
                 self.rdfGraph.add( triplet )
              except Exception as err:
@@ -379,7 +379,26 @@ class QueryDispatcher( QueryFromRdf):
                                 "iduid" : ".*[Ii]d" 
                                }.items()}
 
-
+    def query(self, q):
+        try:
+            ret = self.rdfGraph.query(q)
+        except pyparsing.ParseException as err:
+            sys.stderr.write(f"Parsing error on line:{err.lineno} and col:{err.col}\n")
+            sys.stderr.write(f"Query:\n")
+            qs = q.split("\n")
+            i = 0
+            for ql in qs:
+                i+=1
+                sys.stderr.write(f"{i:2}:{ql}\n")
+            sys.stderr.write(f"\nError on line:{err.lineno} and col:{err.col}:\n")
+            sys.stderr.write(f"\t{err.line}\n")
+            sys.stderr.write("\t" + " " * (err.col-2) + "^!^\n")
+            raise err
+        except Exception as err:
+            sys.stderr.write(f"An error has occurred while processing query\n{q}\n")
+            raise err
+        return ret
+        
     rexSelectOpt = re.compile("^\(\?#([^)]+)\)(@?~?)")
     def dispatch(self,regexp, **optkeys):
         """This query applies to RDF files and queries predicate/values for predicates

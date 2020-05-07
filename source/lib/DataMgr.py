@@ -186,10 +186,15 @@ class manageAndCacheBase(manageDataFileVersions):
             Parameter localOnly specifies that remote cache should not be consulted
 
             If self.options["dumpMetaFile"] is defined and is a file name, the
-            bulk data (in self.data) is output to that file.
+            bulk data, representing the meta/directory information loaded from 
+            the remote site (in self.data) is output to that file.
 
             If self.options["dumpMetaInfoFile"] is defined and is a file name, the
-            meta data (in self.metadata if available) is output to that file.
+            meta data (in self.metadata if available) is output to that file. This 
+            represents information elaborated from "dumpMetaFile".
+
+            Precise description of cached information (is/should be) described
+            in derived classes.
         """
         cacheValid = self._getMetaFromCache(localOnly=localOnly)
 
@@ -495,19 +500,31 @@ class manageAndCacheDataFiles( manageAndCacheBase):
                   self.data = pickler.load()
                   print(f"Loaded pickle from {cacheFname}, loaded {strElapsed} ago ({len(self.data)} elts)")
                   if "showMetaData" in self.options and self.options["showMetaData"]:
-                       prettyPrinter = pprint.PrettyPrinter(indent=4)
-                       print(f"cache metadata:{prettyPrinter.pformat(self.metadata)}")
+                      self.showMetaData()
         return valid
-        
+
+    def showMetaData(self):
+        """ Permits to print meta data pertaining to the operation of this code,
+            in practice this amounts to pretty printing a dictionnary with all options
+            used plus other details
+        """
+        prettyPrinter = pprint.PrettyPrinter(indent=4, width=150)
+        print(f"cache metadata:{prettyPrinter.pformat(self.metadata)}")
+    
     def _getRemoteMeta(self):
           """ Read the metadata on selected files from the remote site, store
               it into the DIRPATH/.cache file, keep it in the self.data attribute as the
               python representation of a json
           """
           spaceAvail = self._spaceAvail(self.dirpath)
-          if spaceAvail < 300*(2**10):
-              print (f"spaceAvail={spaceAvail}, 300K required,  maxDirSz={self.options['maxDirSz']} ")
-              raise RuntimeError(f"Insufficient space in {self.dirpath} to store cached metadata")
+          requiredSpace=300*(2**10)
+          if spaceAvail < requiredSpace:
+              success = self.cacheSpaceRecovery(  requiredSpace )
+              if not success:
+                  spaceAvail = self._spaceAvail(self.dirpath)
+                  print (f"spaceAvail={spaceAvail}, 300K required,  maxDirSz={self.options['maxDirSz']} ")
+                  raise RuntimeError(f"Insufficient space in {self.dirpath} to store cached metadata")
+
           self._getRemoteMetaFromServer()
           self.metadata["pickleTS"]= time.strftime("Pickled at :%Y-%m-%d %H:%M:%S",
                                                    time.gmtime(time.time()))

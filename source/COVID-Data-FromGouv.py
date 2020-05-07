@@ -59,7 +59,8 @@ if not get_ipython() is None and os.path.abspath("../source/") not in sys.path:
 try:
     from lib.utilities     import *
     from lib.figureHelpers import *
-    from lib.DataGouvFr    import *
+    from lib.DataMgrJSON   import *
+    from lib.DataMgr       import *
     import lib.basicDataCTE as DCTE
 except Exception as err:
     print("Could not find library 'lib' with contents 'DataGouvFr' ")
@@ -553,7 +554,14 @@ ImgMgr.save_fig("FIG005")
 # In[ ]:
 
 
-dl=data_dailyLab
+todayStr = datetime.date.today().isoformat()    # handle a data error that appeared on 5/5/2020
+
+
+# In[ ]:
+
+
+msk=d=data_dailyLab.loc[:,"jour"]<=todayStr      #there is an error in the version of the data distrib 05/05/2020
+dl=data_dailyLab.loc[msk,:]
 dlGr = dl.loc[dl["clage_covid"]=="0"].groupby('jour').sum()
 
 painter = figureTSFromFrame(dlGr)
@@ -585,7 +593,7 @@ dlGr.describe()
 
 
 data_dailyLab.columns
-dataDLab = data_dailyLab.copy()
+dataDLab = data_dailyLab.loc[msk,:].copy()
 
 
 # In[ ]:
@@ -882,18 +890,6 @@ for lwhat in rowsSel:
 
 
 hzz.transpose()
-
-
-# In[ ]:
-
-
-SNS.boxplot(data=hzz)
-
-
-# In[ ]:
-
-
-SNS.boxplot(data=hzz.transpose())
 
 
 # In[ ]:
