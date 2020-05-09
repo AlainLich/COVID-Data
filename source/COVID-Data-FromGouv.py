@@ -750,52 +750,6 @@ for lab in colLabs:
 hGMDJExtract = hndGMDepJour.iloc[:,range(5,9)]
 
 
-# ### Looking at correlations (not very interesting, just in case...)
-# Look for correlations, globally over cases ( indexed by data and 'departement'):
-
-# In[ ]:
-
-
-gCorr=hGMDJExtract.corr()
-corrSum={}
-corrSum["global"]= gCorr
-
-
-# Now, do correlations between 'departements' separately for each date:
-
-# In[ ]:
-
-
-gdCorrVec = hGMDJExtract.groupby("jour").corr()
-gdCorrVec.index.names = [ gdCorrVec.index.names[0], "obs"]
-
-
-# And do statistics averaging over 'departements'
-
-# In[ ]:
-
-
-corrSum["depMean"] = gdCorrVec.groupby("obs").mean()
-corrSum["depMax"] = gdCorrVec.groupby("obs").max()
-corrSum["depMin"] = gdCorrVec.groupby("obs").min()
-corrSum["depStd"] = gdCorrVec.groupby("obs").std()
-
-
-# In[ ]:
-
-
-i=8
-for kstat in corrSum.keys():
-    i+=1
-    if kstat == "global":
-        title = "Correlations between events/million people \nindexed by date and 'departement'"
-    else:
-        title = f"Correlations between events/million people accross departements\naveraged over dates:{kstat}"
-    PLT.figure(figsize=(12,12))
-    DCTE.simpleHeatMap(data=corrSum[kstat], title=title)
-    ImgMgr.save_fig(f"FIG{i:03}")
-
-
 # ### Look at the distribution accross areas ('departements')
 # 
 
@@ -884,12 +838,6 @@ for lwhat in rowsSel:
   DCTE.boxStripPlot( data = hzz.transpose(), x=None, y=None, title=title, **snsDtl)
     
   ImgMgr.save_fig(f"FIG{(i+20):03}")  
-
-
-# In[ ]:
-
-
-hzz.transpose()
 
 
 # In[ ]:

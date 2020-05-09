@@ -118,6 +118,9 @@ class manageAndCacheDataFilesFRDG(  manageAndCacheDataFilesJSON):
                - `maxDirSz`    : 50 Mb: max total cache directory size (.cache file
                                  storing meta data is not accounted for systematically)
         """
+        if not hasattr(self, "options"):
+            self.options={}
+        setDefaults(self.options, kwdOpts, manageAndCacheDataFilesFRDG.defaultOpts)
         manageAndCacheDataFilesJSON.__init__(self, dirpath=dirpath)
         # by now, the base class initializer has obtained the local filesys information
         setDefaults(self.options, kwdOpts, manageAndCacheDataFilesFRDG.defaultOpts)

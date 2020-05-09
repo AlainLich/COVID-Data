@@ -57,7 +57,14 @@ class manageDataFileVersions(object):
         self.dirpath = dirpath
         if not os.path.isdir(dirpath):
             raise RuntimeError(f"Path {dirpath} not directory")
-        self.options = kwdOpts
+
+        #design of setDefaults is faulty TBD
+        warnings.warn("Redesign of setDefaults TBD", DeprecationWarning)
+
+        if hasattr(self, "options"):
+             setDefaults(self.options, kwdOpts)
+        else:
+            self.options = kwdOpts
         self._walk()
 
     datedFileRex = re.compile(
@@ -163,7 +170,7 @@ class manageDataFileVersions(object):
           while a more recent version corresponding to the same generic id exists.
         """
         gen = self.makeGenDate(file)
-        if gen[0] in self.genDir:
+        if gen is not None and gen[0] in self.genDir:
             nf = self.genDir[gen[0]][1]
             return nf
         if not default:
@@ -177,7 +184,8 @@ class manageAndCacheBase(manageDataFileVersions):
 
     def __init__(self, dirpath,**kwdOpts ):
         manageDataFileVersions.__init__(self, dirpath=dirpath, **kwdOpts)
-    
+        self._spaceAvail(dirpath)
+        
     def getRemoteInfo(self, localOnly=False):
         """ Load the information describing files on the remote site, either
             from a local cached copy (in file .cache), or by reloading after the 
@@ -267,9 +275,13 @@ class manageAndCacheBase(manageDataFileVersions):
           if  self.updtList is None:
               print (f"update of cache not possible, missing metadata and/or updt list")
               return None
+
+          # we first evaluate requirement aggressively using the marginPercent arg
           updtReq = self.verifyForCacheUpdate()
           if updtReq > 0 or "forceCacheRecovery" in self.options:
               success = self.cacheSpaceRecovery(updtReq)
+              # now try to accomodate the update, not taking margin into account
+              updtReq = self.verifyForCacheUpdate( marginPercent=0 )
           if  updtReq <= 0 or success :
               return self._cacheUpdate(effector=self._getFromRemote)
           else:
@@ -318,24 +330,34 @@ class manageAndCacheBase(manageDataFileVersions):
 
          
          success =  totRecup >= requiredSpace
-         if success:
-             self._removeScavengeList()
+         self._removeScavengeList()
+         if not success:
+             print( f"Recovered {totRecup} from cache, which is insufficient required:{requiredSpace}" )
          return success      
 
     def _removeScavengeList(self):
         for file in self.scavengeList:
             os.remove(file)
+            #TBD update self.availOnDisk
          
-    def  verifyForCacheUpdate(self):
+    def  verifyForCacheUpdate(self, marginPercent=0.10):
           """ returns the amount of disk space that need to be recovered to proceed,
               0 if enough space is available
+              -   the argument marginPercent permits to make cache recovery more aggressive
+                  before entering the _cacheUpdate method. 
+
+              NOTE: To be coherent, we should also refuse to download/keep files that 
+                    exceed the max available size once loaded (this may be necessary since
+                    some sites may not indicate expected file size in meta, and/or the 
+          	    indicated size may be deceptive! (TBD?)
           """
           self._requiredDiskSz = 0
           self._cacheUpdate(effector=self._sizeAccounter)
+          self.availOnDisk = self._spaceAvail(self.dirpath)
           if self._requiredDiskSz > 0:
-              self.availOnDisk = self._spaceAvail(self.dirpath)
-              if  self._requiredDiskSz >  self.availOnDisk:
-                  return  self._requiredDiskSz -  self.availOnDisk
+              avail = self.availOnDisk - int( marginPercent * self.options['maxDirSz'])
+              if  self._requiredDiskSz >  avail:
+                  return  self._requiredDiskSz -  avail
           return 0    
 
     cacheUpdtTimeRex = re.compile("""^
@@ -394,11 +416,17 @@ class manageAndCacheBase(manageDataFileVersions):
          if remoteDT is None:
              print(f"remoteDT is None for reason:{reason} fname:{fname}\n!! !!")
          fullPathname = os.path.join(self.dirpath,fname)
+         print("About to load file {fullPathname}, available space is {self.availOnDisk}")
          with urllib.request.urlopen(url) as furl :
               with open(fullPathname,"wb") as fwr : 
                    fwr.write(furl.read())
+                   wrSz = fwr.tell()
          print(f"Wrote file \t'{fullPathname}'\n\tfrom URL:'{url}'")
 
+         self.availOnDisk -=  wrSz
+         if self.availOnDisk < 0:
+             print(f"Loading {fullPathname} requires {wrSz} bytes")
+             raise RuntimeError(f"Loading file {fullPathname} has exceeded avail cache space")
          chk = self. verifChecksum(fullPathname,checksum)
          if chk:
             # update the internal database (useful if same file encountered several times
@@ -517,12 +545,12 @@ class manageAndCacheDataFiles( manageAndCacheBase):
               python representation of a json
           """
           spaceAvail = self._spaceAvail(self.dirpath)
-          requiredSpace=300*(2**10)
+          requiredSpace = 2000*(2**10)
           if spaceAvail < requiredSpace:
               success = self.cacheSpaceRecovery(  requiredSpace )
               if not success:
                   spaceAvail = self._spaceAvail(self.dirpath)
-                  print (f"spaceAvail={spaceAvail}, 300K required,  maxDirSz={self.options['maxDirSz']} ")
+                  print (f"spaceAvail={spaceAvail}, {int(requiredSpace/(2**10))}K required,  maxDirSz={self.options['maxDirSz']} ")
                   raise RuntimeError(f"Insufficient space in {self.dirpath} to store cached metadata")
 
           self._getRemoteMetaFromServer()
@@ -535,7 +563,12 @@ class manageAndCacheDataFiles( manageAndCacheBase):
                   pickler.dump(self.metadata)
                   pickler.dump(self.data)
                   print(f"Stored pickle in {cacheFname}")
+                  wrSz = pikFile.tell()
 
+          self.availOnDisk -=  wrSz
+          if self.availOnDisk < 0:
+             print(f"Storing {cacheFname} requires {wrSz} bytes")
+             raise RuntimeError(f"Storing file {fullPathname} has exceeded avail cache space")        
           return False
        
     def _getRemoteMetaFromServer(self):  
@@ -734,6 +767,9 @@ class manageAndCacheFilesDFrame( manageAndCacheBase):
                - `maxDirSz`    : 50 Mb: max total cache directory size (.cache file
                                  storing meta data is not accounted for systematically)
         """
+        if not hasattr(self, "options"):
+            self.options={}
+        setDefaults(self.options, kwdOpts, manageAndCacheDataFiles.defaultOpts)
         manageAndCacheBase.__init__(self, dirpath=dirpath)
         # by now, the base class initializer has obtained the local filesys information
         setDefaults(self.options, kwdOpts, manageAndCacheDataFiles.defaultOpts)

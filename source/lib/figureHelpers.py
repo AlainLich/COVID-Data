@@ -107,6 +107,8 @@ class  figureFromFrame(object):
            self.currSub.set_ylabel(kwdOpts["ylabel"])
         if "title" in kwdOpts:
            self.currSub.set_title(kwdOpts["title"])
+        if "yscale" in kwdOpts:
+           self.currSub.set_yscale(kwdOpts["yscale"]) 
 
         self._doLineAttrs(kwdOpts)
         # sets our legend for our graph.
@@ -144,16 +146,20 @@ class  figureFromFrame(object):
             raise RuntimeError("By now you must have given me a DataFrame")
         self.preparePlot()
         colSel = self.df.columns
-
+        
+        postAttribs = ("yscale",)
         for c in colSel:
                if c in colOpts:
-                    optd = colOpts[c]
+                    optd  = { k:v for (k,v) in colOpts[c].items() if k not in postAttribs}
+                    poptd = { k:v for (k,v) in colOpts[c].items() if k  in postAttribs}
                else:
-                    optd = {}
+                    optd  = {}
+                    poptd = {}
                     
         self._setSubplot()
         self.lines = self.currSub.plot(self.df,**optd);
         self._plotKwd(kwdOpts)
+        self._plotKwd(poptd)
                 
     def doPlotBycol(self, df=None, colSel=None, colOpts = {}, **kwdOpts):
         self._setDf(df)

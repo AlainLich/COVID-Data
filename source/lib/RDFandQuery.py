@@ -91,7 +91,12 @@ class WithRDFSerialize(object):
 
 class XMLtoRDF(WithRDFSerialize):
     def __init__(self, optdict):
-        self.options = optdict
+
+        if hasattr(self, "options"):
+             setDefaults(self.options, optdict)
+        else:
+            self.options = optdict            
+
         self.internNodeCtr=0
         WithRDFSerialize.__init__(self, optdict["--debug"])
         for (k,v) in RDFNS.nsTable.items():
@@ -297,7 +302,8 @@ class XMLtoRDF(WithRDFSerialize):
         # emit triples for attributes
         for (k,v) in e.attrib.items():
            kToNS = self.keyToNSattrib(k)
-           print(f"Attribute k='{k}'\tv=({type(v)})'{v}'\n\t\tkToNS:({type(kToNS)})'{kToNS}'")
+           if self.doDebug:
+               print(f"Attribute k='{k}'\tv=({type(v)})'{v}'\n\t\tkToNS:({type(kToNS)})'{kToNS}'")
            addGraph( (nd, kToNS , Literal(v)))
 
         # deal recursively with children
