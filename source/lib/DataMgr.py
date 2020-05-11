@@ -39,10 +39,50 @@ __version__ = '1.1'
 from   lib.utilities import *
 import requests, sys, pprint, pickle, time, shutil
 from   collections   import Iterable, Mapping
+from   enum import Enum, IntFlag
+
 import urllib, hashlib
 
 import lib.RDFandQuery as RDFQ
+import lib.RdfEU       as RDFEU
 
+class UpdateRqt(object):
+    """
+    Used to express a cache update request, which will likely be conditional.
+    A list of such objects is built from the meta information and passed to  
+    ̀cacheUpdate` and ̀_cacheUpdate`
+    """
+
+    class ReasonCde(Enum):
+        NoGeneric    = 1    # no generic id: filename stripped of timestamp, use file mtime
+        IsNewer      = 2    # remote file is newer: get it!
+        NoLocalCopy  = 3    # no local copy, go and get it!
+        FreqObsolete = 4    # check if the file mtime and the frequency imply obsolescence
+
+
+    _validKwds = set( ('reason','fname','url','org', 'checksum','format',
+                    'modDate', 'cachedDate', 'filesize', 'genKey', 'frequency') )
+        
+    def __init__(self, reason, kwdDict):
+        bad = set(kwdDict.keys()) - UpdateRqt._validKwds
+        if len (bad) > 0:
+            raise RuntimeError(f"Bad keyword(s): {bad}")
+        if not isinstance(reason, UpdateRqt.ReasonCde):
+            raise RuntimeError(f"Bad type for reason code: {type(reason)}")
+        self.reason = reason
+        self.kwdDict= kwdDict
+
+    def __getattr__(self,attr):
+        if attr == "reason":
+            return self.reason
+        if attr in self.kwdDict:
+            return self.kwdDict[attr]
+        else:
+            raise AttributeError(f"Object {type(self)} has no attribute '{attr}'")
+
+    def __str__(self):
+        return f"<{type(self)}>:[[ reason = {self.reason}; dict={self.kwdDict}]]"
+        
 class manageDataFileVersions(object):
     """ For each file name in local directory, find which are different versions of same as 
         indicated in the file name with pattern yyyy-mm-dd-HHhMM. 
@@ -269,7 +309,7 @@ class manageAndCacheBase(manageDataFileVersions):
                    files
 
               Preparatory information is stored in attribute `updtList`, may be 
-              None if it has not been posible to access the metadata on the remote
+              None if it has not been possible to access the metadata on the remote
               server.
           """
           if  self.updtList is None:
@@ -381,57 +421,61 @@ class manageAndCacheBase(manageDataFileVersions):
           updtList = self.updtList
           for entry in updtList:
               #print(f"ENTRY={entry}")
-              if entry['reason'] == "noLocalCopy":
-                  effector(None, **entry)
+              if entry.reason == UpdateRqt.ReasonCde.NoLocalCopy :
+                  effector(None, entry)
 
-              elif entry['reason'] == "ifAbsent":
-                  fname=os.path.join(self.dirpath,entry['fname'])
+              elif entry.reason == UpdateRqt.ReasonCde.NoGeneric:
+                  fname=os.path.join(self.dirpath,entry.fname)
                   if not os.path.exists(fname):
-                     effector(None, **entry)      
+                     effector(None, entry)      
 
-              elif entry['reason'] == "ifNewer":
-                  genEntry = self.genDir[entry['genKey']]
+              elif entry.reason == UpdateRqt.ReasonCde.IsNewer:
+                  genEntry = self.genDir[entry.genKey]
                   fname = genEntry[2]
                   mtime = os.path.getmtime(fname)
                   mtimeDT = datetime.datetime.fromtimestamp(mtime)
-                  mobj = manageAndCacheDataFiles.cacheUpdtTimeRex.match(entry['modDate'])
+                  mobj = manageAndCacheDataFiles.cacheUpdtTimeRex.match(entry.modDate)
                   if mobj:
                      fls = ( int(mobj.groupdict()[z])
                              for z in  ('year', 'month', 'day','hour','minute', 'seconde') )
                      remoteDT = datetime.datetime( *fls )
                   else:
-                     raise RuntimeError(f"cannot parse date /{entry['modDate']}/")
+                     raise RuntimeError(f"cannot parse date /{entry.modDate}/")
                   if mtimeDT < remoteDT - datetime.timedelta(minutes=5):
-                       effector(remoteDT, **entry)
-
+                       effector(remoteDT, entry)
+                       
+              elif entry.reason == UpdateRqt.ReasonCde.FreqObsolete:
+                  mtime = os.path.getmtime( os.path.join( self.dirpath, entry.fname))
+                  obsolete =  RDFEU.isObsolete( datetime.datetime.fromtimestamp(mtime),
+                                                criterion = entry.frequency)
+                  if obsolete:
+                       effector(datetime.datetime.now(), entry)
+                      
               else:
-                  raise RuntimeError(f"Bad reason code: {entry['reason']}")
+                  raise RuntimeError(f"Bad reason code: {entry.reason}")
         
-    def _getFromRemote(self,remoteDT,
-                            reason=None,fname=None, url=None, org=None, checksum=None,
-                            format=None, modDate=None, cachedDate=None,
-                            filesize=None, genKey=None):
+    def _getFromRemote(self,remoteDT, rqt ):
          """ (internal) read from remote using API/http protocol
          """
          if remoteDT is None:
-             print(f"remoteDT is None for reason:{reason} fname:{fname}\n!! !!")
-         fullPathname = os.path.join(self.dirpath,fname)
-         print("About to load file {fullPathname}, available space is {self.availOnDisk}")
-         with urllib.request.urlopen(url) as furl :
+             print( f"remoteDT is None for reason:{rqt.reason} fname:{rqt.fname}\n!! !!")
+         fullPathname = os.path.join(self.dirpath,rqt.fname)
+         print( f"About to load file {fullPathname}, available space is {self.availOnDisk}")
+         with urllib.request.urlopen(rqt.url) as furl :
               with open(fullPathname,"wb") as fwr : 
                    fwr.write(furl.read())
                    wrSz = fwr.tell()
-         print(f"Wrote file \t'{fullPathname}'\n\tfrom URL:'{url}'")
+         print(f"Wrote file \t'{fullPathname}'\n\tfrom URL:'{rqt.url}'")
 
          self.availOnDisk -=  wrSz
          if self.availOnDisk < 0:
              print(f"Loading {fullPathname} requires {wrSz} bytes")
              raise RuntimeError(f"Loading file {fullPathname} has exceeded avail cache space")
-         chk = self. verifChecksum(fullPathname,checksum)
+         chk = self. verifChecksum(fullPathname,rqt.checksum)
          if chk:
             # update the internal database (useful if same file encountered several times
             # with different timestamps) 
-            self.genDir[genKey] = (remoteDT, fname, fullPathname) 
+            self.genDir[rqt.genKey] = (remoteDT, rqt.fname, fullPathname) 
 
             #print(f"GENDIR:{self.genDir}")
          return chk
@@ -565,6 +609,8 @@ class manageAndCacheDataFiles( manageAndCacheBase):
                   print(f"Stored pickle in {cacheFname}")
                   wrSz = pikFile.tell()
 
+          if not hasattr( self, "availOnDisk" ):
+               self.availOnDisk = self._spaceAvail(self.dirpath)
           self.availOnDisk -=  wrSz
           if self.availOnDisk < 0:
              print(f"Storing {cacheFname} requires {wrSz} bytes")
@@ -726,18 +772,18 @@ class manageAndCacheDataFiles( manageAndCacheBase):
                   genDate = self.makeGenDate(fname)
                   if genDate is None:
                       gen,fdate = (None,None)
-                      reason="ifAbsent"         # no generic id:filename without timestamp
+                      reason = UpdateRqt.ReasonCde.NoGeneric # no generic id:filename without timestamp
                   else:
                       gen,fdate  = genDate
                       if gen in self.genDir:
-                          reason="ifNewer"
+                          reason = UpdateRqt.ReasonCde.IsNewer
                       else:
-                          reason="noLocalCopy"
-                  
-                  updtList.append( { 'reason':reason,'fname':fname, 'url':url, 'org':org,
-                                     'checksum':checksum, 'format': format,
-                                     'modDate':modDate,'cachedDate':fdate,
-                                     'filesize':filesize,'genKey': gen } )
+                          reason = UpdateRqt.ReasonCde.NoLocalCopy
+
+                  kd = {'fname':fname, 'url':url, 'org':org, 'checksum':checksum, 
+                	  'format': format,'modDate':modDate,'cachedDate':fdate,
+                          'filesize':filesize,'genKey': gen } 
+                  updtList.append( UpdateRqt(reason, kd))
           self.updtList = updtList
 
 

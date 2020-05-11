@@ -183,6 +183,8 @@ class manageAndCacheDataFilesEU(  manageAndCacheDataFilesJSON):
                - `maxDirSz`    : 50 Mb: max total cache directory size (.cache file
                                  storing meta data is not accounted for systematically)
         """
+        self.options={}
+        setDefaults(self.options, kwdOpts, manageAndCacheDataFilesEU.defaultOpts)
         manageAndCacheDataFilesJSON.__init__(self, dirpath=dirpath)
         # by now, the base class initializer has obtained the local filesys information
         setDefaults(self.options, kwdOpts, manageAndCacheDataFilesEU.defaultOpts)

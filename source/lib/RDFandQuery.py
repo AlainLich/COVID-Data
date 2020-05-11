@@ -212,7 +212,7 @@ class XMLtoRDF(WithRDFSerialize):
     def keyToNSattrib(self, key):
        
        ret=self._keyToNSattrib_Clark(key)
-       if self.doDebug or True:
+       if self.doDebug:
              print(f"keyToNSattrib entered with ({type(key)}{key})")
              print(f"\treceived from _keyToNSattrib:({type(ret)}{ret})")
        

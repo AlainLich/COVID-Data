@@ -4,7 +4,7 @@
  These scripts are intended to facilitate synchronizing with several data
  sources, including:
   - data appearing on www.data.gouv.fr (French government Open Data)
-  - data appearing on EU Open Data Portal (EU ODP)  <A HREF="https://data.europa.eu/"https://data.europa.eu/</A>
+  - data appearing on EU Open Data Portal (EU ODP)  <A HREF="https://data.europa.eu/">https://data.europa.eu/</A>
  Are also included some exploitation tools using python's ̀panda`, `matplotlib` and `seaborn` packages
  
  Jupyter notebooks included work with COVID-19 / SARS-cov-19
@@ -58,6 +58,7 @@ Mostly this consists of
 <TABLE>
   <TR><TD COLSPAN="1"><CENTER>Comparison between some European countries</CENTER></TD> </TR>
   <TR> <TD> <IMG SRC="./JupySessions/images/Chap03/FIG007.jpg"/></TD> </TR>
+    <TR> <TD><CENTER> The same in **log scale** </CENTER></TD> </TR>
    <TR> <TD> <IMG SRC="./JupySessions/images/Chap03/FIG008.jpg"/></TD> </TR>
 </TABLE>    
 

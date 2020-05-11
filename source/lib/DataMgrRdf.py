@@ -17,6 +17,7 @@ from rdflib.namespace import NamespaceManager
 
 from lib.DataMgr import *
 import lib.RDFandQuery as RDFQ
+import lib.RdfEU       as RDFEU
 
 class manageAndCacheDataFilesRDF(  manageAndCacheDataFiles):         
     def __init__(self, dirpath,**kwdOpts ):
@@ -208,6 +209,20 @@ class manageAndCacheDataFilesRdfEU(  manageAndCacheDataFilesRDF):
     def _buildRemoteSparql(self):
         """ Build SPARQL that will be shipped to remote site via protocol supported by
             OAI / OpenAPI-Specification  (https://github.com/OAI/OpenAPI-Specification/)
+
+
+            *Note* : specifications in 
+            `https://www.w3.org/TR/vocab-dcat/#Property:resource_update_date` apply to
+             the EU euodp site. In particular:
+                - 6.4.8 Property: update/modification date
+
+                  An absent value MAY indicate that the item has never changed after its 
+                  initial publication, or that the date of last modification is not known,
+                  **or that the item is continuously updated**.
+
+                  Concerning frequency, see 
+                       - 6.6.2 : Property: frequency see dct:accrualPeriodicity
+        	       - 9.1   : Temporal properties
         """
         # prepare for handling request customization
         print(f"In {self.__class__}._buildRemoteSparql\t available options:\n\t{sorted(self.options.keys())}")
@@ -222,13 +237,14 @@ PREFIX dc: <http://purl.org/dc/terms/>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 
-SELECT distinct ?g ?title ?dsURI ?DatasetTitle ?Publisher ?dloadurl ?lang ?issue ?mod ?source ?sz ?rissue ?fmt ?Resource ?ResourceDescription 
+SELECT distinct ?g ?title ?dsURI ?DatasetTitle ?Publisher ?dloadurl ?lang ?issue ?mod ?source ?sz ?frequency ?rissue ?fmt ?Resource ?ResourceDescription 
 WHERE { GRAPH ?g { filter regex(?title, 'COVID', 'i'). 
                    FILTER langMatches( lang(?title), "EN" ).
                    ?dsURI    a        dcat:Dataset.
                    ?dsURI    dc:title ?title .
                    ?dsURI    dc:publisher   ?Publisher . 
                    ?dsURI    dc:title ?DatasetTitle . 
+                   OPTIONAL { ?dsURI    dc:accrualPeriodicity   ?frequency . }
                    OPTIONAL { ?dsURI    dc:language ?lang. }
                    OPTIONAL { ?dsURI    dc:modified ?mod. }    # rare
                    OPTIONAL { ?dsURI    dc:issued   ?issued. }  # rare
@@ -276,7 +292,7 @@ WHERE { GRAPH ?g { filter regex(?title, 'COVID', 'i').
           self._mkUpdtlistFromTbl()
 
     _updtEntryFlds = ('reason', 'fname', 'url', 'org', 'checksum', 'format',
-                         'modDate', 'cachedDate', 'filesize', 'genKey')
+                         'modDate', 'cachedDate', 'filesize', 'genKey', 'frequency')
           
     def _mkUpdtlistFromTbl(self):
         # this shows the format of what we have to assemble
@@ -290,18 +306,32 @@ WHERE { GRAPH ?g { filter regex(?title, 'COVID', 'i').
         #iterate over portions of table pertaining to same download URL
         gb = mtable.groupby('dloadurl')
         for (url,dfExtract) in gb:
-            updtEntry = { x:None for x in manageAndCacheDataFilesRdfEU._updtEntryFlds}
-            updtEntry['url'] = str(url)
+            updtEnt = { x:None for x in manageAndCacheDataFilesRdfEU._updtEntryFlds}
+            updtEnt['url'] = str(url)
 
             fn    = dfExtract['dsURI'][0].split("/")[-1]
             ftype = dfExtract['fmt'][0].split("/")[-1].lower()
-            updtEntry['fname']  = fn + '.' + ftype
-            updtEntry['genKey']  = fn + '.' + ftype
-            updtEntry['format'] = ftype
+            updtEnt['fname']  = fn + '.' + ftype
+            updtEnt['genKey']  = fn + '.' + ftype
+            updtEnt['format'] = ftype
 
-            updtEntry['org']   =  str( dfExtract['Publisher'][0] )
-            updtEntry['reason'] = "ifAbsent"   # not optimal, TBD
-                    
+            updtEnt['org']   =  str( dfExtract['Publisher'][0] )
+
+            if "frequency" in  dfExtract.columns:
+                x =  dfExtract['frequency'][0]
+                qn = self.dataQuery.NMgr.qname(x)
+                updtEnt['frequency'] = qn.split(':')[-1]
+                reason = UpdateRqt.ReasonCde.FreqObsolete
+            else:
+                qn = None
+                reason = UpdateRqt.ReasonCde.NoGeneric
+            if "mod" in  dfExtract.columns:    
+                mod =  dfExtract['mod'][0]
+            else:
+                mod = None
+            print(f"qn='{qn}'\tmod={mod}")
+
+            updtEntry =  UpdateRqt( reason,  updtEnt )
             updtList.append(updtEntry)
         
         
@@ -385,44 +415,6 @@ WHERE { ?parent  res:solution        ?sol .
   ORDER BY ?solNodeId ?bindId ?varname ?value ?pred ?pvalue
 """
 
-         
-    _qUnused = """   # Walk solution sets from the top
-SELECT distinct ?solNodeId ?bindId ?varname ?value  ?pred ?pvalue
-WHERE { ?parent  res:solution        ?sol .
-        ?sol     X2R:nodeID          ?solNodeId.
-        ?sol     res:binding         ?bind .
-        ?bind    X2R:nodeID          ?bindId.
-        ?bind    res:variable        ?var  .
-        ?var     N:text              ?varname .
-        ?bind    res:value           ?val .
-        ?val     ?pred               ?pvalue .
-        OPTIONAL { ?val     N:text              ?value . }
-
-        # The following constrains to entries which have a downloadURL
-        ?sol     res:binding         ?chkBind.
-        ?chkBind res:variable        ?chkVar.
-        ?chkVar  N:text              ?chkVarname . 
-        FILTER   regex(?chkVarname,'dload','i') .
-} 
-  ORDER BY ?solNodeId ?bindId ?varname ?value ?pred ?pvalue
-"""
-
-    _qUnused1 = """   # Reduces output for debugging
-SELECT distinct ?solNodeId ?bindId ?varname ?value  ?pred ?pvalue
-WHERE { ?parent  res:solution        ?sol .
-        ?sol     X2R:nodeID          ?solNodeId.
-        ?sol     res:binding         ?bind .
-        ?bind    X2R:nodeID          ?bindId.
-        ?bind    res:variable        ?var  .
-        ?var     N:text              ?varname .
-        ?bind    res:value           ?val .
-        ?val     ?pred               ?pvalue .
-        OPTIONAL { ?val     N:text              ?value . }
-        FILTER regex(?solNodeId,'^r9$','i') .
-
-} 
-  ORDER BY ?solNodeId ?bindId ?varname ?value ?pred ?pvalue
-"""
 
     def tabulate(self, returned):
         """ return the query results in the form of a Panda.DataFrame

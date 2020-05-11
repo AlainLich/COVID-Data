@@ -1,6 +1,6 @@
 # Library organization
 
-This is implemented in Python3, package requirements in  <A HREF="requirements.txt">requirements.txt<A>.
+This is implemented in Python3, package requirements in  <A HREF="requirements.txt">requirements.txt</A>.
 
 ## Package
 The library is organized as follows (for now only one package) in directory `source/lib`:
@@ -14,7 +14,7 @@ The library is organized as follows (for now only one package) in directory `sou
     - directory used as cache for remote data distribution sites
       -  support for JSON protocol as used on <A HREF="http://www.data.gouv.fr">www.data.gouv.fr</A>
       -  support for JSON protocol used by : deprecated
-      -  support for SPARQL+XML protocol used by EU Open Data Portal (EU ODP) <A HREF="https://data.europa.eu/"https://data.europa.eu/</A>
+      -  support for SPARQL+XML protocol used by EU Open Data Portal (EU ODP) <A HREF="https://data.europa.eu/">https://data.europa.eu/</A>
 - rdflib utilities
   -  show rdf trees as GraphViz .dot
 
@@ -30,7 +30,7 @@ The library is organized as follows (for now only one package) in directory `sou
 	 notebooks
 
 ## Library structure:
-     <IMG SRC='./JupySessions/images/Doc/inherit_graph_0.jpg"/>
+     <IMG SRC="./JupySessions/images/Doc/inherit_graph_0.jpg"/>
 
 
 

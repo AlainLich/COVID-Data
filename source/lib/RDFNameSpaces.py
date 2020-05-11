@@ -26,6 +26,8 @@ nsParms = (
     # These are likely to be used by the european open data portal
     ("dcat",   "http://www.w3.org/ns/dcat#"),
     ("odp",    "http://data.europa.eu/euodp/ontologies/ec-odp#"),
+#    ("eufreq",  "http://publications.europa.eu/resource/authority/frequency/"),
+    ("eupubl",  "http://publications.europa.eu/resource/authority/"),
     ("xsd",    "http://www.w3.org/2001/XMLSchema#"),
     ("foaf",   "http://xmlns.com/foaf/0.1/"),
     
