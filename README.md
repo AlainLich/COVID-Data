@@ -50,9 +50,10 @@ Mostly this consists of
          <TD> <IMG SRC="./JupySessions/images/Chap01/FIG008.jpg"/></TD></TR>
  </TABLE>
 <TABLE>
-  <TR><TD COLSPAN="1"><CENTER>Activity according to date and area</CENTER></TD> </TR>
-  <TR> <TD> <IMG SRC="./JupySessions/images/Chap01/FIG017.jpg"/></TD> </TR>
-   <TR> <TD> <IMG SRC="./JupySessions/images/Chap01/FIG023.jpg"/></TD> </TR>
+  <TR><TD COLSPAN="1"><CENTER>Comparison between largest 'départements'</CENTER></TD> </TR>
+  <TR> <TD> <IMG SRC="./JupySessions/images/Chap01/FIG050.jpg"/></TD> </TR>
+    <TR> <TD><CENTER> The same in **log scale** </CENTER></TD> </TR>
+   <TR> <TD> <IMG SRC="./JupySessions/images/Chap01/FIG051.jpg"/></TD> </TR>
 </TABLE>    
 
 <TABLE>

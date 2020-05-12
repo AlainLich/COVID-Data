@@ -561,9 +561,9 @@ class manageAndCacheDataFiles( manageAndCacheBase):
             mtime = os.path.getmtime(cacheFname)
             nowtime = time.time()
             elapsed = nowtime - mtime
-            strElapsed = time.strftime("%Hh %Mm %Ss", time.gmtime(elapsed))
+            elapsedStr = strElapsed(elapsed)
             if elapsed > self.options['CacheValidity'] and  not  localOnly:
-               print(f"Need to reload cache from remote,  stale after {strElapsed}")
+               print(f"Need to reload cache from remote,  stale after {elapsedStr}")
                valid = False
         if valid:
                with open(cacheFname,"rb") as pikFile:

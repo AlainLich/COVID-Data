@@ -12,7 +12,7 @@ import sys, os, re
 
 # Python programming
 from itertools import cycle
-from time import time
+import time
 import datetime
 from   enum import Enum, IntFlag
 
@@ -270,6 +270,17 @@ class rexTuple(object):
          else:
              return rex.match(st)
 
+def strElapsed(t):
+    """ 
+    Read a time duration in seconds, output a format : "xxh yym zzs" 
+    Use in situations where time.strftime is not satisfactory (outputs output hours up to 
+    24 and then need to go to day (offset by 1)
+    """
+    s = int(t) %60
+    m = int(t/60) %60
+    h = int(t/(60*60))
+    return f"{h}h {m}m {s}s"
+         
 class rexTupleList(object):
     """ Encapsulate a list of rexTuple as representing a 'xxx/xxx/xx' expression
         as described above
@@ -309,6 +320,16 @@ if __name__ == "__main__":
                             optDict=opt2)
             self.assertEqual(d4, {'tyty': 'ahhh', 1:1, 2:2} )
             
+
+    class TestTime(unittest.TestCase):
+
+        def test1(self):
+            nowtime = time.time()
+            mtime   = os.path.getmtime("/usr")
+            elapsed =  nowtime - mtime
+            str1 = time.strftime("(%d days) %Hh %Mm %Ss", time.gmtime(elapsed))
+            str2 = strElapsed(elapsed)
+            print(f"elapsed={elapsed}\t str1={str1} str2={str2}")
             
     unittest.main()
     """ To run specific test use unittest cmd line syntax, eg.:

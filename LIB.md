@@ -19,7 +19,7 @@ The library is organized as follows (for now only one package) in directory `sou
   -  show rdf trees as GraphViz .dot
 
 
- ## tests/demos:
+## tests/demos:
       1) test files are available for Python's unittest framework; they show a number of
          use cases
       2) jupyter notebooks show use cases, complete with graphics and comments in directory

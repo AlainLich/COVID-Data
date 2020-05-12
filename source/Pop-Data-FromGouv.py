@@ -59,7 +59,8 @@ if not get_ipython() is None and os.path.abspath("../source/") not in sys.path:
 try:
     from lib.utilities     import *
     from lib.figureHelpers import *
-    from lib.DataGouvFr    import *
+    from lib.DataMgrJSON   import *
+    from lib.DataMgr       import *
     from lib.pandaUtils    import *
 except Exception as err:
     print("Could not find library 'lib' with contents 'DataGouvFr' ")
@@ -248,8 +249,8 @@ for (dat,name) in dataListDescr:
 # In[ ]:
 
 
-#from IPython.core.display import display, HTML
-#display(HTML("<style>.container { width:100% !important; }</style>"))
+from IPython.core.display import display, HTML
+display(HTML("<style>.container { width:100% !important; }</style>"))
 
 
 # In[ ]:
@@ -258,39 +259,25 @@ for (dat,name) in dataListDescr:
 data_exportDS.loc[:2].values
 
 
+# This selects rows according to a *regular expression* (compliant with the python `re` module)
+
 # In[ ]:
 
 
 df1 =  DfMatcher(data_exportDS)
-
-
-# In[ ]:
-
-
-
 df1.showMatch('description','stat.*population.*')
 df1.prMatch('description','stat.*population.*')
 
 
 # ### Now look at population statistics
 # #### Landed at the wrong place
-# I like the western seaside, but this was not the target!
+# I like the atlantic seaside, but this was not the target!
 
 # In[ ]:
 
 
 interesting = df1.rowMatch('slug','recensement.*population-population$') 
-
-
-# In[ ]:
-
-
 interesting.loc[:, ['url', 'title']].values
-
-
-# In[ ]:
-
-
 interesting.values
 
 
@@ -331,7 +318,7 @@ inseeDep
 # In[ ]:
 
 
-inseeDep.iloc[:,2:].sum()
+inseeDep.iloc[:,4:].sum()
 
 
 # In[ ]:
@@ -339,6 +326,9 @@ inseeDep.iloc[:,2:].sum()
 
 inseeReg.iloc[:,4:].sum()
 
+
+# ## Merging demographic data with Covid hospital or testing statistics
+# This should give a different perspective on those numbers.
 
 # In[ ]:
 
