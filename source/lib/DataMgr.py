@@ -224,8 +224,13 @@ class manageAndCacheBase(manageDataFileVersions):
 
     def __init__(self, dirpath,**kwdOpts ):
         manageDataFileVersions.__init__(self, dirpath=dirpath, **kwdOpts)
-        self._spaceAvail(dirpath)
-        
+        avl= self._spaceAvail(dirpath)
+        margin  = self.options['maxDirSz'] * 0.1
+        if avl < margin  :
+            success = self.cacheSpaceRecovery(  margin - avl)
+            if not success:
+                raise RuntimeError(f"Cache space in {dirpath} insufficient, check manually")
+            
     def getRemoteInfo(self, localOnly=False):
         """ Load the information describing files on the remote site, either
             from a local cached copy (in file .cache), or by reloading after the 
@@ -321,7 +326,7 @@ class manageAndCacheBase(manageDataFileVersions):
           if updtReq > 0 or "forceCacheRecovery" in self.options:
               success = self.cacheSpaceRecovery(updtReq)
               # now try to accomodate the update, not taking margin into account
-              updtReq = self.verifyForCacheUpdate( marginPercent=0 )
+              updtReq = self.verifyForCacheUpdate( marginPercent=0.15 )
           if  updtReq <= 0 or success :
               return self._cacheUpdate(effector=self._getFromRemote)
           else:
@@ -396,6 +401,7 @@ class manageAndCacheBase(manageDataFileVersions):
           self.availOnDisk = self._spaceAvail(self.dirpath)
           if self._requiredDiskSz > 0:
               avail = self.availOnDisk - int( marginPercent * self.options['maxDirSz'])
+              print( f"in verifyForCacheUpdate avail={avail} required={self._requiredDiskSz}" )
               if  self._requiredDiskSz >  avail:
                   return  self._requiredDiskSz -  avail
           return 0    
@@ -570,7 +576,7 @@ class manageAndCacheDataFiles( manageAndCacheBase):
                   pickler = pickle.Unpickler( pikFile)
                   self.metadata = pickler.load()
                   self.data = pickler.load()
-                  print(f"Loaded pickle from {cacheFname}, loaded {strElapsed} ago ({len(self.data)} elts)")
+                  print(f"Loaded pickle from {cacheFname}, loaded {elapsedStr} ago ({len(self.data)} elts)")
                   if "showMetaData" in self.options and self.options["showMetaData"]:
                       self.showMetaData()
         return valid

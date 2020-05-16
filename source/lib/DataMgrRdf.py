@@ -14,7 +14,7 @@ import pandas 		 as 	PAN
 
 from rdflib import Graph, Literal, BNode, Namespace,  RDF, URIRef
 from rdflib.namespace import NamespaceManager
-
+from lxml import etree, html
 from lib.DataMgr import *
 import lib.RDFandQuery as RDFQ
 import lib.RdfEU       as RDFEU
@@ -96,9 +96,14 @@ class manageAndCacheDataFilesRDF(  manageAndCacheDataFiles):
 
           # will return OK even if thing does not exist
           if cde >= 400:
-               print(f"URL/request={resp.url}\tStatus:{cde}:{cdeTxt}")
+               print(f"URL/request={resp.url}\n\tStatus:{cde}:{cdeTxt}")
                print(f"Request to get remote information failed, {self.options['cacheFname']} may be stale")
-               return
+               print(f"Please check http request code above; if transient network/server issue, just retry!")
+               print(f"Status:{cde}:{cdeTxt}")
+               print(f"Additional information received:")
+               msgHtml = html.fromstring(resp.content)
+               print(etree.tostring(msgHtml, encoding='unicode', pretty_print=True))
+               raise RuntimeError(f"Bad http return code:{cde}:{cdeTxt}")
           print(f"URL/request={resp.url}\tStatus:{cde}:{cdeTxt}")
 
           self.data = resp.content

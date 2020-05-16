@@ -80,7 +80,21 @@ class DfMatcher(object):
 
         def prMatch(self, col,rex, l=150):
              return prMatch(self.df, col,rex, l=l)
-             
+
+def DFIndexDaysElapsed( df, newDteCol="dteStr", format='%Y-%m-%d'):
+    """ Given a DataFrame df, where the index is a date represented as strings
+        with given format, reindex df with days elapsed since the date in the
+        first row. The original index, in string form, is moved to the
+        column indicated in argument newDteCol.
+
+        The DataFrame is modified in place, the function returns None
+    """
+    origIndex = df.index
+    dt = PAN.to_datetime( df.index, format=format )
+    elapsedDays =   dt - dt[0]
+    df.index =  elapsedDays.days
+    df.loc[ : , newDteCol] = origIndex
+         
 if __name__ == "__main__":
     import unittest
     import sys

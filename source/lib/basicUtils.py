@@ -559,6 +559,10 @@ def collectDict(**kwargs):
     """
     return kwargs
 
+def toDict(**kwargs):
+    return kwargs
+
+
 #
 #            ----------------------------------------
 #	      Poke in class / inheritance attributes
