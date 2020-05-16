@@ -71,14 +71,16 @@ Mostly this consists of
    - manage a local repository with files by handling file version/timestamp in file name. 
    - automate the transfer of files with located on the remote site:
      - identified by badge "covid-19" on  <A HREF="doc.data.gouv.fr">doc.data.gouv.fr</A>.
-      This uses the API (`http` based) documented  on <A HREF="https://doc.data.gouv.fr/api/reference/#/datasets/list_datasets">
+      This uses the API (`http` based) documented at <A HREF="https://doc.data.gouv.fr/api/reference/#/datasets/list_datasets">
       https://doc.data.gouv.fr/api/reference/#/datasets/list_datasets </A>
-     - identified by a SPARQL filtering regular expression on  <A HREF="https://data.europa.eu/"https://data.europa.eu/</A>
+     - identified by a SPARQL filtering regular expression on  <A HREF="https://data.europa.eu/">https://data.europa.eu/</A>
        SPARQL entry point, using the 
    - permit some inquiries on the downmoaded/cached meta data describing the data loaded from the remote site
    - `figureHelpers.py` module:
      - some convenience tools to facilitate/automate making `matplotlib` figures. (Also looking forwards towards ̀seaborn`... after some wait... )
 
+   - perform some data analyses (model parameter fitting), see: <A HREF="./JupySessions/FIT-Data-FromGouv.ipynb">./JupySessions/FIT-Data-FromGouv.ipynb</A>
+   
    For more information on changes (and bugs), see the git log.
 
 ## install requirement
