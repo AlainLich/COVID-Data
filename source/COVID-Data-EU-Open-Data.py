@@ -125,6 +125,12 @@ dataFileVMgr.cacheUpdate()
 
 # ## Get some understanding of the available resource
 
+# In[ ]:
+
+
+nbLastDays = 30
+
+
 # ## Dig into the data
 
 # In[ ]:
@@ -273,11 +279,31 @@ ImgMgr.save_fig("FIG007")
 # In[ ]:
 
 
+painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
+for (country,dfExtractOrig) in dtg :
+    pop = dfExtractOrig["popData2018"][0]
+    print(f"Country={country}, pop:{pop/1.0E6}M")
+    dfExtract = dfExtractOrig.set_index("elapsedDays").copy()
+    dfExtract.loc[:,"cumdeaths"] = dfExtract.loc[:,"deaths"].sort_index().cumsum()/dfExtract.loc[:,"popData2018"]*1.0E6
+    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases"]/dfExtract.loc[:,"popData2018"]*1.0E6
+    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths"]/dfExtract.loc[:,"popData2018"]*1.0E6
+    painter.doPlot(df = dfExtract.loc[:,["cases","deaths","cumdeaths"]])
+    painter.setAttrs(label=f"Days since {dateStart}",
+                 title=f"Data from EU Data Portal: {country}",
+                 legend=True,
+                 xlabel=f"Days since {dateStart}",
+                 ylabel="Events per million population"   )
+        
+    painter.advancePlotIndex()  
+ImgMgr.save_fig("FIG017")  
+
+
+# In[ ]:
+
+
 painter = figureFromFrame(None,  subplots=subnodeSpec, figsize=(15,15))
 for (country,dfExtractOrig) in dtg :
     pop = dfExtractOrig["popData2018"][0]
-    if  pop< 10.0E6:
-        continue
     print(f"Country={country}, pop:{pop/1.0E6}M")
     dfExtract = dfExtractOrig.set_index("elapsedDays").copy()
     dfExtract.loc[:,"cumcases"] = dfExtract.loc[:,"cases"].sort_index().cumsum()/dfExtract.loc[:,"popData2018"]*1.0E6
@@ -296,6 +322,87 @@ for (country,dfExtractOrig) in dtg :
                  ylabel="Events per million population"   )
     painter.advancePlotIndex()
 ImgMgr.save_fig("FIG008")        
+
+
+# ### Look at the largest countries
+
+# In[ ]:
+
+
+dtx = dt[ dt["popData2018"] > 65.0e6 ]
+dtg = dtx.groupby("countriesAndTerritories")
+subnodeSpec=(lambda i,j:{"nrows":i,"ncols":j})(*subPlotShape(len(dtg),maxCol=4, colFirst=False))
+
+
+# In[ ]:
+
+
+painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,20))
+for (country,dfExtractOrig) in dtg :
+    pop = dfExtractOrig["popData2018"][0]
+    print(f"Country={country}, pop:{pop/1.0E6}M")
+    dfExtract = dfExtractOrig.set_index("elapsedDays").copy()
+    dfExtract.loc[:,"cumcases"] = dfExtract.loc[:,"cases"].sort_index().cumsum()/dfExtract.loc[:,"popData2018"]*1.0E6
+    dfExtract.loc[:,"cumdeaths"] = dfExtract.loc[:,"deaths"].sort_index().cumsum()/dfExtract.loc[:,"popData2018"]*1.0E6
+    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases"]/dfExtract.loc[:,"popData2018"]*1.0E6
+    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths"]/dfExtract.loc[:,"popData2018"]*1.0E6
+    painter.doPlot(df = dfExtract.loc[:,["cases","deaths","cumcases","cumdeaths"]])
+    painter.setAttrs(label=f"Days since {dateStart}",
+                 title=f"Data from EU Data Portal: {country}",
+                 legend=True,
+                 xlabel=f"Days since {dateStart}",
+                 ylabel="Events per million population"   )
+        
+    painter.advancePlotIndex()  
+ImgMgr.save_fig("FIG009")  
+
+
+# In[ ]:
+
+
+painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,20))
+for (country,dfExtractOrig) in dtg :
+    pop = dfExtractOrig["popData2018"][0]
+    print(f"Country={country}, pop:{pop/1.0E6}M")
+    dfExtract = dfExtractOrig.set_index("elapsedDays").copy()
+    dfExtract.loc[:,"cumdeaths"] = dfExtract.loc[:,"deaths"].sort_index().cumsum()/dfExtract.loc[:,"popData2018"]*1.0E6
+    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases"]/dfExtract.loc[:,"popData2018"]*1.0E6
+    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths"]/dfExtract.loc[:,"popData2018"]*1.0E6
+    painter.doPlot(df = dfExtract.loc[:,["cases","deaths","cumdeaths"]])
+    painter.setAttrs(label=f"Days since {dateStart}",
+                 title=f"Data from EU Data Portal: {country}",
+                 legend=True,
+                 xlabel=f"Days since {dateStart}",
+                 ylabel="Events per million population"   )
+        
+    painter.advancePlotIndex()  
+ImgMgr.save_fig("FIG019")  
+
+
+# In[ ]:
+
+
+painter = figureFromFrame(None,  subplots=subnodeSpec, figsize=(15,20))
+for (country,dfExtractOrig) in dtg :
+    pop = dfExtractOrig["popData2018"][0]
+    print(f"Country={country}, pop:{pop/1.0E6}M")
+    dfExtract = dfExtractOrig.set_index("elapsedDays").copy()
+    dfExtract.loc[:,"cumcases"] = dfExtract.loc[:,"cases"].sort_index().cumsum()/dfExtract.loc[:,"popData2018"]*1.0E6
+    dfExtract.loc[:,"cumdeaths"] = dfExtract.loc[:,"deaths"].sort_index().cumsum()/dfExtract.loc[:,"popData2018"]*1.0E6
+    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases"]/dfExtract.loc[:,"popData2018"]*1.0E6
+    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths"]/dfExtract.loc[:,"popData2018"]*1.0E6
+    painter.doPlot( df = dfExtract.loc[:,["cases","deaths","cumcases","cumdeaths"]],
+                      colOpts={"cases": {"yscale":'log'},
+                            "deaths": {"yscale":'log'},
+                            "cumcases": {"yscale":'log'},
+                            "cumdeaths": {"yscale":'log'},})
+    painter.setAttrs(label=f"Days since {dateStart}",
+                 title=f"Data from EU Data Portal\nstats for {country}",
+                 legend=True,
+                 xlabel=f"Days since {dateStart}",
+                 ylabel="Events per million population"   )
+    painter.advancePlotIndex()
+ImgMgr.save_fig("FIG010")        
 
 
 # In[ ]:

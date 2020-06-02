@@ -44,10 +44,14 @@ class manageAndCacheDataFilesJSON(  manageAndCacheDataFiles):
 
           # will return OK even if thing does not exist
           if cde >= 400:
-               print(f"URL/request={resp.url}\tStatus:{cde}:{cdeTxt}")
-               print(f"Request to get remote information failed, {self.options['cacheFname']} may be stale")
+               fname = self.options['cacheFname']
+               self.httpErrorMsg(
+                   resp, 
+                   f"Request to get remote information failed, {fname} may be stale",
+                   doRaise = False)               
                return
-          print(f"URL/request={resp.url}\tStatus:{cde}:{cdeTxt}")
+           
+          print(f"URL/request={resp.url}\n\tStatus:{cde}:{cdeTxt}")
 
           self.data = resp.json()
           self.metadata["data:type"] =  "python/json"

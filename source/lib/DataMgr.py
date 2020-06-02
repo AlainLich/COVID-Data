@@ -793,8 +793,18 @@ class manageAndCacheDataFiles( manageAndCacheBase):
           self.updtList = updtList
 
 
+    def httpErrorMsg(self, resp,  retCodeTxt, msg, doRaise=True):
+               retCode = resp.status_code
+               retCodeTxt = requests.status_codes._codes[retCode][0]
+               print(msg)
+               print(f"URL/request={resp.url}\n\tStatus:{retCode}:{retCodeTxt}")
+               print(f"Please check http request code above; if transient network/server issue, just retry!")
+               print(f"Additional information received:")
+               msgHtml = html.fromstring(resp.content)
+               print(etree.tostring(msgHtml, encoding='unicode', pretty_print=True))
+               if doRaise:
+                 raise RuntimeError(f"Bad http return code:{retCode}:{retCodeTxt}")
 
-          
     
 class manageAndCacheFilesDFrame( manageAndCacheBase):
     """ Manage a local repository where the meta data comes from a DataFrame (in

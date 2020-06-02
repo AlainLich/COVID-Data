@@ -96,15 +96,12 @@ class manageAndCacheDataFilesRDF(  manageAndCacheDataFiles):
 
           # will return OK even if thing does not exist
           if cde >= 400:
-               print(f"URL/request={resp.url}\n\tStatus:{cde}:{cdeTxt}")
-               print(f"Request to get remote information failed, {self.options['cacheFname']} may be stale")
-               print(f"Please check http request code above; if transient network/server issue, just retry!")
-               print(f"Status:{cde}:{cdeTxt}")
-               print(f"Additional information received:")
-               msgHtml = html.fromstring(resp.content)
-               print(etree.tostring(msgHtml, encoding='unicode', pretty_print=True))
-               raise RuntimeError(f"Bad http return code:{cde}:{cdeTxt}")
-          print(f"URL/request={resp.url}\tStatus:{cde}:{cdeTxt}")
+               fname = self.options['cacheFname']
+               self.httpErrorMsg(
+                   resp, 
+                   f"Request to get remote information failed, {fname} may be stale")
+
+          print(f"URL/request={resp.url}\n\tStatus:{cde}:{cdeTxt}")
 
           self.data = resp.content
           self.metadata["data:type"] =  "txt/xml+rdf"
