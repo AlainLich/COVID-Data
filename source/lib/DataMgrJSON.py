@@ -5,7 +5,10 @@ __author__ = 'Alain Lichnewsky'
 __license__ = 'MIT License'
 __version__ = '1.1'
 
+import json
+
 from lib.DataMgr import *
+
 
 class manageAndCacheDataFilesJSON(  manageAndCacheDataFiles):
     defaultOpts = {
@@ -93,7 +96,79 @@ class manageAndCacheDataFilesJSON(  manageAndCacheDataFiles):
           print("++ "*12+"\n")
 
 
-      
+class manageAndCacheFilesJSONHandwritten(manageAndCacheDataFilesJSON):
+    """
+         Arguments:
+               - `HttpHDR` : header of http command, see your http API
+               - `ApiInq`  : API argument                               ??? any use
+                 'ApiHeaders'   :  Extra Headers,                       ??? any use
+               - `InqParmsDir` : dict with command API parameters
+               - `maxImportSz` : 5 Mb: max size of individual file load
+               - `maxDirSz`    : 50 Mb: max total cache directory size (.cache file
+                                 storing meta data is not accounted for systematically)
+    """
+    defaultOpts = {
+           'cacheFname'   :  ".cache.json",
+           'filespecs'    :  ".filespecs.json",
+           'maxDirSz'     :  20*(2**10)**2,  #20 Mb: max total cache directory size
+           'httpTimeOut'  :  1
+    }
+    def __init__(self, dirpath,**kwdOpts ):
+        if not hasattr(self, "options"):
+            self.options={}
+        setDefaults(self.options, kwdOpts,  manageAndCacheFilesJSONHandwritten.defaultOpts)
+        manageAndCacheDataFilesJSON.__init__(self, dirpath=dirpath)
+        # by now, the base class initializer has obtained the local filesys information
+        setDefaults(self.options, kwdOpts,  manageAndCacheFilesJSONHandwritten.defaultOpts)
+
+        
+    def getRemoteInfo(self):
+        jsonHWFname = os.path.join(self.dirpath,  self.options["filespecs"] )
+        if not os.path.isfile(jsonHWFname):
+            raise RuntimeError(f"No filespecs ({jsonHWFname}) to load information")
+        # read the json into self.data
+        with open(jsonHWFname,"r") as jsonFile:
+            self.data = { "data" : json.load(jsonFile) }
+
+    def pprintDataResources(self, bulk=False) :
+          """ Pretty print selected information on files from the json; if parameter
+              `bulk` is True, the full json information is also shown
+
+              Need to consider the case where we have not been able to load the metadata
+          """
+          if not hasattr(self,"data"):
+              print("No meta data available, pretty print impossible")
+              return
+
+          prettyPrinter = pprint.PrettyPrinter(indent=4)
+          fileList=[]
+          resourceSet = set()
+          
+          for indata in self.data['data']:
+              print(f"{prettyPrinter.pformat( indata)}")
+
+          if bulk:
+              print("BULK DATA "+"** "*12 + "BULK DATA")
+              print(prettyPrinter.pformat(self.data))
+          print("++ "*12)
+          
+    _updtEntryFlds = ('reason', 'fname', 'url', 'org', 'checksum', 'format',
+                         'modDate', 'cachedDate', 'filesize', 'genKey', 'frequency')
+    def updatePrepare(self):
+        updtList = []
+        for indata in self.data['data']:
+             updtEnt = { x:None for x in manageAndCacheFilesJSONHandwritten._updtEntryFlds}
+             updtEnt['url'] =   indata['page']
+             updtEnt['frequency'] = indata['frequency']
+             updtEnt['format'] =  indata['type']
+             updtEnt['fname'] =  indata['fname']
+             reason = UpdateRqt.ReasonCde.FreqObsolete
+             
+             updtEntry =  UpdateRqt( reason,  updtEnt )
+             updtList.append(updtEntry)
+
+        self.updtList = updtList
+            
 class manageAndCacheDataFilesFRDG(  manageAndCacheDataFilesJSON):
     """ Manage a local repository extracted from www.data.gouv.fr:
         - extraction of the  list of files based on criteria conforming to

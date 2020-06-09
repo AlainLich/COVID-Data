@@ -1,6 +1,7 @@
  IPython
  docopt
  hashlib
+ json
  lxml
  matplotlib
  networkx

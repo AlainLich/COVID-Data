@@ -59,17 +59,17 @@ def isObsolete( dte, refDte=None, criterion="daily"):
     
         
     if crit == "daily":
-       retVal = dte < rdte + DTME.timedelta(days=1)
+       retVal = dte < rdte - DTME.timedelta(days=1)
     elif crit == "weekly":
-       retVal = dte < rdte + DTME.timedelta(days=7)
+       retVal = dte < rdte - DTME.timedelta(days=7)
     elif crit == "monthly":
-       retVal = dte < rdte + DTME.timedelta(months=1)
+       retVal = dte < rdte - DTME.timedelta(days=30) # Approx!
     elif crit == "bimonthly":
-       retVal = dte < rdte + DTME.timedelta(months=2)
+       retVal = dte < rdte - DTME.timedelta(days=61) # Approx!
     elif crit == "quarterly":
-       retVal = dte < rdte + DTME.timedelta(months=3)
-    elif crit == "annual":
-       retVal = dte < rdte + DTME.timedelta(years=1)
+       retVal = dte < rdte - DTME.timedelta(days=30*3+1) # Approx!
+    elif crit in ( "annual", "yearly" ):
+       retVal = dte < rdte - DTME.timedelta(days=365) # Approx!
     elif crit == "continuous":
        retVal = True
 

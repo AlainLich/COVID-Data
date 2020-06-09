@@ -74,6 +74,17 @@ Mostly this consists of
 </TABLE>    
 
 
+<TABLE>
+  <TR><TD COLSPAN="1"><CENTER>Comparison between US States</CENTER></TD> </TR>
+    <TR> <TD><CENTER> Most populated states</CENTER></TD> </TR>
+  <TR> <TD> <IMG SRC="./JupySessions/images/Chap04/FIG002.jpg"/></TD> </TR>
+    <TR> <TD><CENTER> With largest mortality per inhabitant</CENTER></TD> </TR>
+  <TR> <TD> <IMG SRC="./JupySessions/images/Chap04/FIG003.jpg"/></TD> </TR>
+</TABLE>    
+For US data, Covid data from: <A HREF="https://covidtracking.com">https://covidtracking.com</A>,
+population data from <A HREF="http://www2.census.gov/programs-surveys/popest/datasets/2010-2019/national">
+http://www2.census.gov/programs-surveys/popest/datasets/2010-2019/national</A>.
+
 ## Functionality
 - Jupyter notebook(s): display data. Automatically make use of the latest version of the  data provided,
    which is cached locally   with  update synchronization with the remote site (automatic, after prescribed time interval)

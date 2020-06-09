@@ -273,8 +273,32 @@ if __name__ == "__main__":
             dataFileVMgr.cacheUpdate()
 
 
+    class DGTestUSACovidTracking(unittest.TestCase):            
+        """ First series of test concerning https://covidtracking.com
+        """
+        defaultPop = {
+                   'CacheValidity':  12*60*60,       #cache becomes stale after 12 hours
+                   'maxImportSz'  :  2*(2**10)**2,   #5 Mb: max size of individual file load
+                   'maxDirSz'     :  100*(2**10)**2,  #100 Mb: max total cache directory size
+                  }
 
+        def test_remoteDF(self):
+            """ Example using remote information with cached json
+            """
+            dataFileVMgr = manageAndCacheFilesJSONHandwritten("../dataUSCovidTrack", **DGTestUSACovidTracking.defaultPop)
+            dataFileVMgr.getRemoteInfo()
+            dataFileVMgr.pprintDataResources(bulk=True)
+            dataFileVMgr.updatePrepare()
+            dataFileVMgr.cacheUpdate()
 
+        def test_remoteDFnodefault(self):
+            """ Example using remote information with cached json
+            """
+            dataFileVMgr = manageAndCacheFilesJSONHandwritten("../dataUSCovidTrack")
+            dataFileVMgr.getRemoteInfo()
+            dataFileVMgr.pprintDataResources(bulk=True)
+            dataFileVMgr.updatePrepare()
+            dataFileVMgr.cacheUpdate()
             
 
     class DGTestRegexp(unittest.TestCase):
@@ -432,5 +456,7 @@ if __name__ == "__main__":
                      DGTestRdfEU
                      DGTestPopDemo 
     		     DGTestRegexp
+    		     DGTestUSACovidTracking
+    		     DGTestUSACovidTracking.test_remoteDFnodefault
     """
 

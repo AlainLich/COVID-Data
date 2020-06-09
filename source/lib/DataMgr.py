@@ -451,9 +451,14 @@ class manageAndCacheBase(manageDataFileVersions):
                        effector(remoteDT, entry)
                        
               elif entry.reason == UpdateRqt.ReasonCde.FreqObsolete:
-                  mtime = os.path.getmtime( os.path.join( self.dirpath, entry.fname))
-                  obsolete =  RDFEU.isObsolete( datetime.datetime.fromtimestamp(mtime),
+                  fp = os.path.join( self.dirpath, entry.fname)
+                  if os.path.exists(fp):
+                     mtime = os.path.getmtime( fp )
+                     obsolete =  RDFEU.isObsolete( datetime.datetime.fromtimestamp(mtime),
                                                 criterion = entry.frequency)
+                  else:
+                    obsolete = True
+                    
                   if obsolete:
                        effector(datetime.datetime.now(), entry)
                       
