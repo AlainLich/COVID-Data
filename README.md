@@ -35,20 +35,32 @@ Mostly this consists of
 </TABLE>
 
 <TABLE>
- <TR><TD COLSPAN="2">Hospital Data</TD> </TR>
+ <TR><TD COLSPAN="2">Hospital Data (France)</TD> </TR>
  <TF><TD>All</TD> <TD><CENTER>Split male/female</CENTER></TD> </TR>
  <TR><TD> <IMG SRC="./JupySessions/images/Chap01/FIG003.jpg"/></TD> 
      <TD> <IMG SRC="./JupySessions/images/Chap01/FIG004.jpg"/></TD> 
  </TR>
  </TABLE>
 <TABLE>
-    <TR><TD COLSPAN="2"><CENTER>Hospital Data</CENTER></TD> </TR>
+    <TR><TD COLSPAN="2"><CENTER>Hospital Data (France)</CENTER></TD> </TR>
     <TR><TD COLSPAN="2"><CENTER>All , Split according age groups</CENTER></TD> </TR>
     <TR><TD COLSPAN="2"> <IMG SRC="./JupySessions/images/Chap01/FIG005.jpg"/></TD></TR> 
     <TR>  <TD COLSPAN="1"><CENTER>Testing</CENTER></TD>  <TD COLSPAN="1">Change in patient status according to population</TD> </TR>
     <TR> <TD> <IMG SRC="./JupySessions/images/Chap01/FIG006.jpg"/></TD>
          <TD> <IMG SRC="./JupySessions/images/Chap01/FIG008.jpg"/></TD></TR>
  </TABLE>
+
+<TABLE>
+ <TR><TD COLSPAN="1">Visits / Activity(France ER + SOS Medecin) </TD> </TR>
+ <TR><TD><CENTER>Visits</CENTER></TD> </TR>
+ <TR><TD> <IMG SRC="./JupySessions/images/Chap01/FIG002pass.jpg"/></TD></TR>
+ <TR><TD><CENTER>Hospitalization</CENTER></TD> </TR>
+ <TR><TD> <IMG SRC="./JupySessions/images/Chap01/FIG002hospit.jpg"/></TD></TR>
+ <TR><TD><CENTER>Corona actions</CENTER></TD> </TR>
+ <TR><TD> <IMG SRC="./JupySessions/images/Chap01/FIG002acte_corona.jpg"/></TD></TR>
+ </TABLE>
+
+
 <TABLE>
   <TR><TD COLSPAN="1"><CENTER>Comparison between largest 'départements'</CENTER></TD> </TR>
   <TR> <TD> <IMG SRC="./JupySessions/images/Chap01/FIG050.jpg"/></TD> </TR>
