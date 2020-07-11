@@ -43,6 +43,12 @@ import xlrd
 # In[ ]:
 
 
+import libApp.appUSA as appUSA
+
+
+# In[ ]:
+
+
 import warnings
 warnings.filterwarnings('ignore')
 print("For now, reduce python warnings, I will look into this later")
@@ -252,87 +258,6 @@ dtg = dt.groupby("state")
 
 # Now, the figure making process is generalized into this class, since we plan to emit multiple figures.
 
-# In[ ]:
-
-
-class perStateFigure(object):
-    """ This permits to make figures of data organized by State, it is expected that derived classes
-        will bring different selections and orderings; further parametrization is also envisionned
-    """
-    def __init__(self, dateStart):
-        self.dateStart = dateStart
-
-    def initPainter(self, subnodeSpec=None, figsize=(15,15), maxCol=6, colFirst=False):
-        if subnodeSpec is None:
-            subnodeSpec = self.subnodeSpec
-        elif isinstance(subnodeSpec,int):
-            self.subnodeSpec = (lambda i,j:{"nrows":i,"ncols":j})                                        (*subPlotShape( subnodeSpec, maxCol=maxCol,
-                                                       colFirst=colFirst))
-            subnodeSpec = self.subnodeSpec
-            
-        self.painter = figureFromFrame(None, subplots=subnodeSpec, figsize=figsize)
-
-    def skipIfCond(self, count, state):
-        return False
-
-    def breakIfCond(self, count, state):
-        return count > 15
-
-    def getPop(self, state, dfx, doPrint=True):
-            # get the population for the state (plus state name)
-            fips = dfx.iloc[0,:].loc["fips"]
-            demox = demogr.loc[demogr ["STATE"] == fips, :]
-            if demox.shape[0] < 1:
-                print(f"Issue with state encoding: state={state}")  
-                self.abbrevIssueList.append(state)
-                stName = None
-                stPop  = None
-            else:
-                stName = demox.loc[:, "NAME"].iloc[0]
-                stPop = demox.loc[:, "POPESTIMATE2019"].iloc[0]
-            if doPrint:
-                print(f"state={state}:{stName} fips={fips} pop={stPop}")
-            return (stName, stPop, fips)
-        
-    def getPopStateTble(self,  groupedDF):
-        data = []
-        for (state, dfExtractOrig) in groupedDF:
-            stName, stPop, fips = self.getPop(state, dfExtractOrig, doPrint=False)
-            data.append( (state, stName, stPop, fips) )
-            
-        df = PAN.DataFrame(data, columns=("state","stName","pop","fips" ))
-        return df
-        
-    def mkImage(self, groupedDF, plotCols):
-        count = 0
-        self.abbrevIssueList=[]
-        
-        for (state, dfExtractOrig) in groupedDF:
-            count+=1
-            if self.skipIfCond(count, state):
-                continue
-            if self.breakIfCond(count, state):
-                break
-            
-            stName, stPop, fips = self.getPop(state, dfExtractOrig)
-            if stPop is None:
-                continue
-
-            dfExtract = dfExtractOrig.set_index("elapsedDays").copy()
-
-            for c in plotCols:
-                dfExtract.loc[:,c] = dfExtract.loc[:,c]/stPop*1.0e6
-
-            self.painter.doPlot(df = dfExtract.loc[:, plotCols] )
-            self.painter.setAttrs(label=f"Days since {self.dateStart}",
-                         title=f"Data from USA CovidTracking: {stName}",
-                         legend=True,
-                         xlabel=f"Days since {self.dateStart}",
-                         ylabel="Events per million population"   )
-        
-            self.painter.advancePlotIndex()  
-
-
 # First attempt, just get the first!
 
 # In[ ]:
@@ -340,7 +265,8 @@ class perStateFigure(object):
 
 plotCols=("recovered","death","hospitalized")
 
-psFig =  perStateFigure(dateStart)
+psFig =  appUSA.perStateFigure(dateStart)
+psFig.getDemographics(data_USAPopChange)
 psFig.initPainter(subnodeSpec=15, maxCol=3)
 psFig.mkImage(dtg,plotCols)
 ImgMgr.save_fig("FIG001")
@@ -365,22 +291,8 @@ mostPopulated = tble.sort_values(by=["pop"], ascending=False,).iloc[:15,0].value
 # In[ ]:
 
 
-class perStateSelected(perStateFigure):
-    def __init__(self, dateStart, select):
-        perStateFigure.__init__(self, dateStart)
-        self.selected = select
-        
-    def skipIfCond(self, count, state):
-        return state not in self.selected
-    
-    def breakIfCond(self, count, state):
-        return False
-
-
-# In[ ]:
-
-
-psFig2 =  perStateSelected(dateStart,mostPopulated)
+psFig2 =  appUSA.perStateSelected(dateStart,mostPopulated)
+psFig2.getDemographics(data_USAPopChange)
 psFig2.initPainter(subnodeSpec=15, maxCol=3)
 psFig2.mkImage(dtg,plotCols)
 ImgMgr.save_fig("FIG002")
@@ -401,9 +313,16 @@ mostDeadly = dtgMerged.sort_values(by=["deathPM"], ascending=False,).iloc[:15,0]
 # In[ ]:
 
 
-psFig3 =  perStateSelected(dateStart,mostDeadly)
+psFig3 =  appUSA.perStateSelected(dateStart,mostDeadly)
+psFig3.getDemographics(data_USAPopChange)
 psFig3.initPainter(subnodeSpec=15, maxCol=3)
 psFig3.mkImage(dtg,plotCols)
 ImgMgr.save_fig("FIG003")
 print(f"Had issues with state encodings:{psFig3.abbrevIssueList}")
+
+
+# In[ ]:
+
+
+
 

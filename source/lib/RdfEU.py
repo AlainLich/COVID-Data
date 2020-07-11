@@ -70,12 +70,13 @@ def isObsolete( dte, refDte=None, criterion="daily"):
        retVal = dte < rdte - DTME.timedelta(days=30*3+1) # Approx!
     elif crit in ( "annual", "yearly" ):
        retVal = dte < rdte - DTME.timedelta(days=365) # Approx!
-    elif crit == "continuous":
+    elif crit in ( "continuous", "cont"):
+       # found a case where abbreviated "cont" on https://data.europa.eu/,
+       # not in reference dublincore !
        retVal = True
 
-
     else:
-        raise NotImplementedError("Criterion {criterion} still TBD!!")
+        raise NotImplementedError(f"Criterion {criterion} still TBD!!")
 
     return retVal
 

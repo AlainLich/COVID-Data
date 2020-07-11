@@ -310,17 +310,17 @@ WHERE { GRAPH ?g { filter regex(?title, 'COVID', 'i').
         for (url,dfExtract) in gb:
             updtEnt = { x:None for x in manageAndCacheDataFilesRdfEU._updtEntryFlds}
             updtEnt['url'] = str(url)
-
-            fn    = dfExtract['dsURI'][0].split("/")[-1]
-            ftype = dfExtract['fmt'][0].split("/")[-1].lower()
+            
+            fn    = dfExtract['dsURI'].iloc[0].split("/")[-1]
+            ftype = dfExtract['fmt'].iloc[0].split("/")[-1].lower()
             updtEnt['fname']  = fn + '.' + ftype
             updtEnt['genKey']  = fn + '.' + ftype
             updtEnt['format'] = ftype
 
-            updtEnt['org']   =  str( dfExtract['Publisher'][0] )
+            updtEnt['org']   =  str( dfExtract['Publisher'].iloc[0] )
 
             if "frequency" in  dfExtract.columns:
-                x =  dfExtract['frequency'][0]
+                x =  dfExtract['frequency'].iloc[0]
                 qn = self.dataQuery.NMgr.qname(x)
                 updtEnt['frequency'] = qn.split(':')[-1]
                 reason = UpdateRqt.ReasonCde.FreqObsolete
@@ -328,7 +328,7 @@ WHERE { GRAPH ?g { filter regex(?title, 'COVID', 'i').
                 qn = None
                 reason = UpdateRqt.ReasonCde.NoGeneric
             if "mod" in  dfExtract.columns:    
-                mod =  dfExtract['mod'][0]
+                mod =  dfExtract['mod'].iloc[0]
             else:
                 mod = None
             print(f"qn='{qn}'\tmod={mod}")

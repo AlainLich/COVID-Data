@@ -128,7 +128,19 @@ class manageAndCacheFilesJSONHandwritten(manageAndCacheDataFilesJSON):
             raise RuntimeError(f"No filespecs ({jsonHWFname}) to load information")
         # read the json into self.data
         with open(jsonHWFname,"r") as jsonFile:
-            self.data = { "data" : json.load(jsonFile) }
+            try :
+                self.data = { "data" : json.load(jsonFile) }
+            except Exception as err:
+                sys.stderr.write(f"In file '{jsonHWFname}':\n")
+                sys.stderr.write(f"   JSON decode error:{err}\n")
+                ds = err.doc.split("\n")
+                sp = max (err.lineno-3, 0)
+                ep = min(err.lineno+3, len(ds))
+                for l in range(sp,ep):
+                    sys.stderr.write(f"{l+1:4}:{ds[l]}\n")
+                    if (l+1) == err.lineno:
+                            sys.stderr.write( " "*(err.colno+4) + "^\n")
+                raise err
 
     def pprintDataResources(self, bulk=False) :
           """ Pretty print selected information on files from the json; if parameter

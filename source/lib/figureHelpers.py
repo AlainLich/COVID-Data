@@ -193,9 +193,13 @@ class  figureTSFromFrame(figureFromFrame):
           it is expected that the row index are dates in string.
           These are converted into the elapsed days from start of table, and represented
           in DateTime format.
-          Keywords listed in defaultOpts are honored.
+          Keywords listed in defaultOpts are honored; 
+              keyword dateTranslate permits to iron out date format inconsistencies,
+                      like when I found in loaded data an index:  
+                      "..., '2020-06-28', '2020-06-29', '27/06/2020', '28/06/2020', ...".
     """
-    defaultOpts = {"dateFmt":'%Y-%m-%d'}
+    defaultOpts = {"dateFmt":'%Y-%m-%d',
+                   "dateTranslate": True}
     def __init__(self, df, **kwdOpts):
         figureFromFrame.__init__(self, df, **kwdOpts)
         setDefaults(self.optd, kwdOpts, figureTSFromFrame.defaultOpts)
@@ -205,11 +209,27 @@ class  figureTSFromFrame(figureFromFrame):
     
     def _dtToElapsed(self):
         self.df.origIndex = self.df.index
-        self.dt = PAN.to_datetime(self.df.index, format=self.optd["dateFmt"]  )
+        if self.optd["dateTranslate"]:
+           trDates= list( map (  figureTSFromFrame._dateTranslator,  self.df.index ))
+        else:
+            trDates = self.df.index
+
+        self.dt = PAN.to_datetime(trDates, format=self.optd["dateFmt"]  )
         self.elapsedDays = self.dt - self.dt[0]
         self.df.index = self.elapsedDays.days
-        
 
+    dateTranslatorRegexp = re.compile("^(\d{2})/(\d{2})/(\d{4})$")
+    def _dateTranslator(dte):
+        """ This is used to mitigate data format inconsistencies which have been found in
+            practice, .... a more sophisticated scheme will be put in place in case such
+            things continue to pop up.
+        """
+        mobj =  figureTSFromFrame. dateTranslatorRegexp.match(dte)
+        if mobj:
+           mg = mobj.groups()
+           return mg[2] + "-" + mg[1] + "-" + mg[0] 
+        else:
+            return dte
 
 # Two examples of using this class are given below:
 

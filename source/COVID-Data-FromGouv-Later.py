@@ -71,6 +71,12 @@ except Exception as err:
     raise err
 
 
+# In[ ]:
+
+
+import libApp.appFrance as appFrance
+
+
 # ## Check environment
 # 
 # It is expected that:
@@ -302,7 +308,7 @@ if False:
 # In[ ]:
 
 
-nbLastDays=20
+nbLastDays=50
 
 
 # ## Get some demographics data from INSEE
@@ -364,17 +370,22 @@ checkRepresentedRegions(data_dailyRegion, print=True);
 # In[ ]:
 
 
-dfGr = PAN.DataFrame(gr_all_age_regions.copy(), columns=gr_all_age_regions.columns[1:])
-painter = figureTSFromFrame(dfGr,figsize=(12,8))
-painter.doPlot()
-painter.setAttrs(label=f"Days since {painter.dt[0]}",
-                 title="Whole France/Data ER + SOS-medecin\nAll age groups",
-                 legend=True,
-                 xlabel=f"Days since {painter.dt[0]}")
-        
-PAN.set_option('display.max_colwidth', None)
 display(meta_QuotReg[[ "Colonne","Description_FR" ]])
-ImgMgr.save_fig("FIG002")
+
+
+# In[ ]:
+
+
+dfGrAll = PAN.DataFrame(gr_all_age_regions.copy(), columns=gr_all_age_regions.columns[1:])
+flist = list (map (lambda x:  ( x, re.compile(".*_" + x + "_.*")), ("pass", "hospit", "acte", "acte_corona")))
+for (feature, frex) in flist:
+        urgences = appFrance.UrgenceSOSDataFig()
+        urgences.initPainter( dataFrame = dfGrAll, single=True, colSelectRex=frex)
+        urgences.mkImage(
+            title="Whole France/Data ER + SOS-medecin\nAll age groups; feature:" + feature,
+            xlabel=f"Days since {urgences.painter.df.index[0]}"
+        )
+        ImgMgr.save_fig("FIG002"+feature)
 
 
 # Then, I look at the national data, as represented in `data_dailyFrance` and `data_daily`
@@ -528,19 +539,36 @@ ImgMgr.save_fig("FIG066")
 
 # ### Now analyze hospital data according to age
 # For now the data available in table `data_hospAge` covers a small number of days.... hopefully this may improve, either by more earlier data becoming available, or just by more data being collected day after day!
+# 
+# This has been modified to handle bad data quality occurring recently; probably not a good solution, just removing duplicate entries, need to check whether dates are still meaningful! Bad data has been occurring only
+# around July 4th, still hope that later versions will clear this!
 
 # In[ ]:
 
 
 data_hosp_RegAge=data_hospAge.set_index(["reg","jour",'cl_age90'])
-dhRA = data_hosp_RegAge[ data_hosp_RegAge.index.get_level_values(2)!=0 ].unstack('cl_age90')
-dhRAg = dhRA.groupby("jour").sum()
+ddd= data_hosp_RegAge[ data_hosp_RegAge.index.get_level_values(2)!=0 ]
 
+# We may have multiple entries for same day, this is an issue in the way
+# this table is made up. For now, seems that best strategy is to sum!
+# We keep track of previous strategy which was to arbitrarily select a value among duplicate indices,
+# therefore the if True
+if True:
+  dhRA = ddd.groupby(by=list(ddd.index.names)).sum().copy()
+  dhRAg = dhRA.unstack('cl_age90').groupby("jour").sum()
+else:
+    # older strategy, kept for referral, parameter keep has several possible values
+    # remove duplicate entries, not performing selection between multiple values
+  duplic = ~ddd.duplicated(keep=False)
+  print( f"Number of duplicated lines: {duplic.sum()} {duplic.sum()/duplic.size*100:.2f}%")
+  dhRA = ddd[ duplic ].unstack('cl_age90')
+  dhRAg = dhRA.groupby("jour").sum()
+    
 ageClasses = sorted(set(dhRAg.columns.get_level_values(1)))
 print(f"age classes = {ageClasses}")
 
-levCat = sorted(set(dhRA.columns.get_level_values(0)))
-levAge = sorted(set(dhRA.columns.get_level_values(1)))
+levCat = sorted(set(dhRAg.columns.get_level_values(0)))
+levAge = sorted(set(dhRAg.columns.get_level_values(1)))
 subnodeSpec=(lambda i,j:{"nrows":i,"ncols":j})(*subPlotShape(len(levAge),maxCol=6))
 
 print(f"nb age classes:{len(levAge)}\tsubnodeSpec:{subnodeSpec}")

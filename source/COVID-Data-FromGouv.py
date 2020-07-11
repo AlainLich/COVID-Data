@@ -494,14 +494,32 @@ ImgMgr.save_fig("FIG004")
 
 
 data_hosp_RegAge=data_hospAge.set_index(["reg","jour",'cl_age90'])
-dhRA = data_hosp_RegAge[ data_hosp_RegAge.index.get_level_values(2)!=0 ].unstack('cl_age90')
-dhRAg = dhRA.groupby("jour").sum()
+ddd= data_hosp_RegAge[ data_hosp_RegAge.index.get_level_values(2)!=0 ]
+
+# We may have multiple entries for same day, this is an issue in the way
+# this table is made up. For now, seems that best strategy is to sum!
+# We keep track of previous strategy which was to arbitrarily select a value among duplicate indices,
+# therefore the if True
+if True:
+  dhRA = ddd.groupby(by=list(ddd.index.names)).sum().copy()
+  dhRAg = dhRA.unstack('cl_age90').groupby("jour").sum()
+else:
+    # older strategy, kept for referral, parameter keep has several possible values
+    # remove duplicate entries, not performing selection between multiple values
+  duplic = ~ddd.duplicated(keep=False)
+  print( f"Number of duplicated lines: {duplic.sum()} {duplic.sum()/duplic.size*100:.2f}%")
+  dhRA = ddd[ duplic ].unstack('cl_age90')
+  dhRAg = dhRA.groupby("jour").sum()
+
+
+# In[ ]:
+
 
 ageClasses = sorted(set(dhRAg.columns.get_level_values(1)))
 print(f"age classes = {ageClasses}")
 
-levCat = sorted(set(dhRA.columns.get_level_values(0)))
-levAge = sorted(set(dhRA.columns.get_level_values(1)))
+levCat = sorted(set(dhRAg.columns.get_level_values(0)))
+levAge = sorted(set(dhRAg.columns.get_level_values(1)))
 subnodeSpec=(lambda i,j:{"nrows":i,"ncols":j})(*subPlotShape(len(levAge),maxCol=6))
 
 print(f"nb age classes:{len(levAge)}\tsubnodeSpec:{subnodeSpec}")
