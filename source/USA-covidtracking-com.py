@@ -43,6 +43,12 @@ import xlrd
 # In[ ]:
 
 
+sys.path.append('/home/alain/test/MachLearn/COVID/source')
+
+
+# In[ ]:
+
+
 import libApp.appUSA as appUSA
 
 

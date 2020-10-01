@@ -97,8 +97,7 @@ class manageAndCacheDataFilesRDF(  manageAndCacheDataFiles):
           # will return OK even if thing does not exist
           if cde >= 400:
                fname = self.options['cacheFname']
-               self.httpErrorMsg(
-                   resp, 
+               self.httpErrorMsg( resp, cde ,
                    f"Request to get remote information failed, {fname} may be stale")
 
           print(f"URL/request={resp.url}\n\tStatus:{cde}:{cdeTxt}")

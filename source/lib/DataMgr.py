@@ -42,9 +42,11 @@ from   collections   import Iterable, Mapping
 from   enum import Enum, IntFlag
 
 import urllib, hashlib
+from lxml import etree, html
 
 import lib.RDFandQuery as RDFQ
 import lib.RdfEU       as RDFEU
+
 
 class UpdateRqt(object):
     """
