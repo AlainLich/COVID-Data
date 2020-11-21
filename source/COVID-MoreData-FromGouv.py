@@ -112,7 +112,7 @@ ImgMgr = ImageMgr(chapdir="Chap01")
 # In[ ]:
 
 
-dataFileVMgr = manageAndCacheDataFilesFRDG("../data")
+dataFileVMgr = manageAndCacheDataFilesFRDG("../data",  maxDirSz= 80*(2**10)**2)
 dataFileVMgr.getRemoteInfo()
 dataFileVMgr.updatePrepare()
 dataFileVMgr.cacheUpdate()
@@ -229,13 +229,13 @@ for f in missing:
 
 ad  = lambda x: "../data/"+x
 
-data_fSolDep= read_xlsxPandas(fSolDep_xls,error_bad_lines=False,sep=",")
-data_fSolRegNaf= read_xlsxPandas(fSolRegNaf_xls,error_bad_lines=False,sep=",")
+data_fSolDep= read_xlsxPandas(fSolDep_xls)
+data_fSolRegNaf= read_xlsxPandas(fSolRegNaf_xls)
 data_indicExcesDCStand= read_csvPandas(indicExcesDCStand_csv,error_bad_lines=False,sep=";")
 data_indicExcesDCDep= read_csvPandas(indicExcesDCDep_csv,error_bad_lines=False,sep=";")
 data_indicExcesDCReg= read_csvPandas(indicExcesDCReg_csv,error_bad_lines=False,sep=";")
-data_incoherent_hebdo= read_xlsxPandas(incoherent_hebdo_xls,error_bad_lines=False,sep=",")
-data_incoherent_quot= read_xlsxPandas(incoherent_quot_xls,error_bad_lines=False,sep=",")
+data_incoherent_hebdo= read_xlsxPandas(incoherent_hebdo_xls)
+data_incoherent_quot= read_xlsxPandas(incoherent_quot_xls)
 
 meta_Hebdo       = read_csvPandas(metaHebdoCsv,     clearNaN=True, error_bad_lines=False,sep=";", header=2)
 meta_QuotReg     = read_csvPandas(metaQuotRegCsv, clearNaN=True, error_bad_lines=False,sep=";", header=1)
@@ -343,8 +343,8 @@ for (dat,name) in dataListDescr:
 
 dataFileVMgrInsee = manageDataFileVersions("../dataPop") 
 inseeDepXLS           ="../dataPop/InseeDep.xls"
-inseeDep            = read_xlsxPandas(inseeDepXLS, error_bad_lines=False,sep=",", sheet_name=1, header=7)
-inseeReg            = read_xlsxPandas(inseeDepXLS, error_bad_lines=False,sep=",", sheet_name=0, header=7)
+inseeDep            = read_xlsxPandas(inseeDepXLS, sheet_name=1, header=7)
+inseeReg            = read_xlsxPandas(inseeDepXLS, sheet_name=0, header=7)
 
 
 # Now we can display our demographics data (summarized)

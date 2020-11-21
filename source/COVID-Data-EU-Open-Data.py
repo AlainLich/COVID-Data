@@ -110,7 +110,7 @@ ImgMgr = ImageMgr(chapdir="Chap03")
 # In[ ]:
 
 
-dataFileVMgr = manageAndCacheDataFilesRdfEU( "../dataEURdf")
+dataFileVMgr = manageAndCacheDataFilesRdfEU( "../dataEURdf", maxDirSz= 80*(2**10)**2)
 dataFileVMgr.getRemoteInfo()
 
 

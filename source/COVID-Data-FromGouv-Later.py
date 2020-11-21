@@ -117,7 +117,7 @@ ImgMgr = ImageMgr(chapdir="Chap01")
 # In[ ]:
 
 
-dataFileVMgr = manageAndCacheDataFilesFRDG("../data")
+dataFileVMgr = manageAndCacheDataFilesFRDG("../data", maxDirSz= 80*(2**10)**2)
 dataFileVMgr.getRemoteInfo()
 dataFileVMgr.updatePrepare()
 dataFileVMgr.cacheUpdate()
@@ -200,7 +200,7 @@ ad  = lambda x: "../data/"+x
 data_dailyRegion = read_csvPandas(ad(dailyRegionCsv), error_bad_lines=False,sep="," )
 data_dailyDep    = read_csvPandas(ad(dailyDepCsv), error_bad_lines=False,sep=",")
 data_dailyFrance = read_csvPandas(ad(dailyFranceCsv), error_bad_lines=False,sep=",")
-data_daily       = read_xlsxPandas(ad(dailyXlsx), error_bad_lines=False,sep=",")
+data_daily       = read_xlsxPandas(ad(dailyXlsx))
 data_weekly      = read_csvPandas(ad(weeklyCsv), error_bad_lines=False,sep=";")
 
 data_hospNouveau = read_csvPandas(ad(hospNouveauCsv), error_bad_lines=False,sep=";")
@@ -321,8 +321,8 @@ nbLastDays=50
 
 dataFileVMgrInsee = manageDataFileVersions("../dataPop") 
 inseeDepXLS           ="../dataPop/InseeDep.xls"
-inseeDep            = read_xlsxPandas(inseeDepXLS, error_bad_lines=False,sep=",", sheet_name=1, header=7)
-inseeReg            = read_xlsxPandas(inseeDepXLS, error_bad_lines=False,sep=",", sheet_name=0, header=7)
+inseeDep            = read_xlsxPandas(inseeDepXLS, sheet_name=1, header=7)
+inseeReg            = read_xlsxPandas(inseeDepXLS, sheet_name=0, header=7)
 
 
 # Now we can display our demographics data (summarized)
@@ -371,6 +371,12 @@ checkRepresentedRegions(data_dailyRegion, print=True);
 
 
 display(meta_QuotReg[[ "Colonne","Description_FR" ]])
+
+
+# In[ ]:
+
+
+gr_all_age_regions.describe()
 
 
 # In[ ]:

@@ -118,13 +118,18 @@ http://www2.census.gov/programs-surveys/popest/datasets/2010-2019/national</A>.
 
 ## install requirement
 ### Python
-- This requires Python 3, and has been tested with Python 3.6.5, on a Linux
-Ubuntu 18.04 LTS system.
+- This requires Python 3, and has been tested with Python 3.8.2, on a Linux
+Ubuntu 20.04 LTS system. (Note: an earlier version worked with Python 3.6.5 on
+Ubuntu 18.04 LTS.)
 
 - In the current version, the library is dependent on
 some features from the IPython package, which comes with Jupyter. This constraint
 may be removed in the future.
 
+### Jupyter
+  This is used with Jupyter as natively integrated / installed in the Ubuntu 20.04 LTS
+  distribution.
+  
 ### Libraries
 ```
 pip install -U -R requirements.txt
