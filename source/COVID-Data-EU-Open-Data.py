@@ -9,7 +9,7 @@
 
 # # Libraries
 
-# In[1]:
+# In[ ]:
 
 
 # Sys import
@@ -42,7 +42,7 @@ import xlrd
 import numpy as NP
 
 
-# In[2]:
+# In[ ]:
 
 
 import warnings
@@ -54,7 +54,7 @@ print("For now, reduce python warnings, I will look into this later")
 # The next cell attempts to give user some information if things improperly setup.
 # Intended to work both in Jupyter and when executing the Python file directly.
 
-# In[3]:
+# In[ ]:
 
 
 if not get_ipython() is None and os.path.abspath("../source/") not in sys.path:
@@ -86,7 +86,7 @@ except Exception as err:
 # My package library is in `../source/lib`, and users running under Python (not in Jupyter) should
 # set their PYTHONPATH to include "../source" ( *or whatever appropriate* ).
 
-# In[4]:
+# In[ ]:
 
 
 checkSetup(chap="Chap03")
@@ -107,7 +107,7 @@ ImgMgr = ImageMgr(chapdir="Chap03")
 # <FONT COLOR="RED">TO BE CHECKED For the files used in this notebook, the latest version is used/loaded irrespective of the
 # timestamp used in the notebook.</FONT>
 
-# In[5]:
+# In[ ]:
 
 
 dataFileVMgr = manageAndCacheDataFilesRdfEU( "../dataEURdf", maxDirSz= 80*(2**10)**2)
@@ -116,7 +116,7 @@ dataFileVMgr.getRemoteInfo()
 
 # This can be long, the SPARQL processor used is not fast
 
-# In[6]:
+# In[ ]:
 
 
 dataFileVMgr.updatePrepare()
@@ -125,7 +125,7 @@ dataFileVMgr.cacheUpdate()
 
 # ## Get some understanding of the available resource
 
-# In[7]:
+# In[ ]:
 
 
 nbLastDays = 30
@@ -133,7 +133,7 @@ nbLastDays = 30
 
 # ## Dig into the data
 
-# In[8]:
+# In[ ]:
 
 
 print("Most recent versions of files in data directory:")
@@ -141,38 +141,41 @@ for f in dataFileVMgr.listMostRecent(nonTS=True) :
     print(f"\t{f}")
 
 
-# In[9]:
+# In[ ]:
 
 
 last = lambda x: dataFileVMgr.getRecentVersion(x,default=os.path.join(dataFileVMgr.dirpath,x))
 
 
-# In[10]:
+# In[ ]:
 
 
 dataFileVMgr.nonTSFiles
 
 
-# In[11]:
+# In[ ]:
 
 
 covidDataEUCsv = last("covid-19-coronavirus-data.csv")
 data_covidDataEU  = read_csvPandas(covidDataEUCsv , error_bad_lines=False,sep="," )
 
 
-# In[12]:
+# In[ ]:
 
 
 data_covidDataEU.info()
 
 
-# In[13]:
+# After the transformation to weekly data, check that numbers are really weekly, dates appear in 'DateRep' and also in 'year_week' in distinct formats. Checked weekly results with "StopCovid" application at https://www.gouvernement.fr/info-coronavirus/tousanticovid (still factor 2 discrepancy ?) .
+
+# In[ ]:
 
 
-data_covidDataEU[:3]
+msk= data_covidDataEU.loc[:,'countriesAndTerritories'] == 'France'
+data_covidDataEU[msk].iloc[:3]
 
 
-# In[14]:
+# In[ ]:
 
 
 def sortedIds(df,col):
@@ -180,7 +183,7 @@ def sortedIds(df,col):
    return sorted([ x  for x in t if isinstance(x, str) ])
 
 
-# In[15]:
+# In[ ]:
 
 
 data_covidDataEU.columns
@@ -188,7 +191,7 @@ data_covidDataEU.columns
 
 # This seems necessary, since there were NaNs in the "geoId" column
 
-# In[16]:
+# In[ ]:
 
 
 for coln in ("geoId" , "countryterritoryCode", "countriesAndTerritories"):
@@ -196,13 +199,13 @@ for coln in ("geoId" , "countryterritoryCode", "countriesAndTerritories"):
     print(f"{coln:30}-> {len(si)} elts")
 
 
-# In[17]:
+# In[ ]:
 
 
 data_covidDataEU["date"] = PAN.to_datetime(data_covidDataEU.loc[:,"dateRep"], format="%d/%m/%Y")
 
 
-# In[18]:
+# In[ ]:
 
 
 dateStart = data_covidDataEU["date"].min()
@@ -213,45 +216,45 @@ print(f"Our statistics span {dateSpan.days+1} days, start: {dateStart} and end {
 data_covidDataEU["elapsedDays"] = (data_covidDataEU["date"] - dateStart).dt.days
 
 
-# In[19]:
+# In[ ]:
 
 
 data_covidDataEU["elapsedDays"][:3] 
 
 
-# In[20]:
+# In[ ]:
 
 
 dt  = data_covidDataEU.copy()
 dt = dt.set_index("continentExp")
 
 
-# In[21]:
+# In[ ]:
 
 
 dtx = dt[dt.index == "Europe"]
 dtg = dtx.groupby("countriesAndTerritories")
 
 
-# In[30]:
+# In[ ]:
 
 
 for (country,dfExtract) in dtg:
-    print(f"{country:30}\t-> data over {dfExtract.shape[0]} days")
+    print(f"{country:30}\t-> data over {dfExtract.shape[0]*7} days")
 
 
-# In[31]:
+# In[ ]:
 
 
 for (country,dfExtract) in dtg :
        #print(f"{country:30}\t-> data over {dfExtract.shape[0]} days")
-       PLT.plot( dfExtract.loc[:,["elapsedDays"]], dfExtract.loc[:,["cases_weekly"]])
+       PLT.plot( dfExtract.loc[:,["elapsedDays"]], dfExtract.loc[:,["cases_weekly"]]/7)
        PLT.yscale("log")
        #painter = figureTSFromFrame(dfExtract.loc[:,["cases","deaths"]],figsize=(12,8))
        #painter.doPlot()
 
 
-# In[32]:
+# In[ ]:
 
 
 dtx = dt[ (dt.index == "Europe") & (dt["popData2019"] > 10.0e6) ]
@@ -259,7 +262,7 @@ dtg = dtx.groupby("countriesAndTerritories")
 subnodeSpec=(lambda i,j:{"nrows":i,"ncols":j})(*subPlotShape(len(dtg),maxCol=4))
 
 
-# In[37]:
+# In[ ]:
 
 
 painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
@@ -269,20 +272,20 @@ for (country,dfExtractOrig) in dtg :
     dfExtract = dfExtractOrig.set_index("elapsedDays").copy()
     dfExtract.loc[:,"cumcases"] = dfExtract.loc[:,"cases_weekly"].sort_index().cumsum()/dfExtract.loc[:,"popData2019"]*1.0E6
     dfExtract.loc[:,"cumdeaths"] = dfExtract.loc[:,"deaths_weekly"].sort_index().cumsum()/dfExtract.loc[:,"popData2019"]*1.0E6
-    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6
-    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6
+    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6/7
+    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6/7
     painter.doPlot(df = dfExtract.loc[:,["cases","deaths","cumcases","cumdeaths"]])
     painter.setAttrs(label=f"Days since {dateStart}",
                  title=f"Data from EU Data Portal: {country}",
                  legend=True,
                  xlabel=f"Days since {dateStart}",
-                 ylabel="Events per million population"   )
+                 ylabel="Daily Events per million population"   )
         
     painter.advancePlotIndex()  
 ImgMgr.save_fig("FIG007")  
 
 
-# In[36]:
+# In[ ]:
 
 
 painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
@@ -291,20 +294,40 @@ for (country,dfExtractOrig) in dtg :
     print(f"Country={country}, pop:{pop/1.0E6}M")
     dfExtract = dfExtractOrig.set_index("elapsedDays").copy()
     dfExtract.loc[:,"cumdeaths"] = dfExtract.loc[:,"deaths_weekly"].sort_index().cumsum()/dfExtract.loc[:,"popData2019"]*1.0E6
-    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6
-    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6
+    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6/7
+    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6/7
     painter.doPlot(df = dfExtract.loc[:,["cases","deaths","cumdeaths"]])
     painter.setAttrs(label=f"Days since {dateStart}",
                  title=f"Data from EU Data Portal: {country}",
                  legend=True,
                  xlabel=f"Days since {dateStart}",
-                 ylabel="Events per million population"   )
+                 ylabel="Daily Events per million population"   )
         
     painter.advancePlotIndex()  
 ImgMgr.save_fig("FIG017")  
 
 
-# In[39]:
+# In[ ]:
+
+
+painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
+for (country,dfExtractOrig) in dtg :
+    pop = dfExtractOrig["popData2019"][0]
+    print(f"Country={country}, pop:{pop/1.0E6}M")
+    dfExtract = dfExtractOrig.set_index("elapsedDays").copy()
+    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6/7
+    painter.doPlot(df = dfExtract.loc[:,["deaths"]])
+    painter.setAttrs(label=f"Days since {dateStart}",
+                 title=f"Data from EU Data Portal: {country}",
+                 legend=True,
+                 xlabel=f"Days since {dateStart}",
+                 ylabel="Daily Events per million population"   )
+        
+    painter.advancePlotIndex()  
+ImgMgr.save_fig("FIG017B")  
+
+
+# In[ ]:
 
 
 painter = figureFromFrame(None,  subplots=subnodeSpec, figsize=(15,15))
@@ -314,8 +337,8 @@ for (country,dfExtractOrig) in dtg :
     dfExtract = dfExtractOrig.set_index("elapsedDays").copy()
     dfExtract.loc[:,"cumcases"] = dfExtract.loc[:,"cases_weekly"].sort_index().cumsum()/dfExtract.loc[:,"popData2019"]*1.0E6
     dfExtract.loc[:,"cumdeaths"] = dfExtract.loc[:,"deaths_weekly"].sort_index().cumsum()/dfExtract.loc[:,"popData2019"]*1.0E6
-    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6
-    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6
+    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6/7
+    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6/7
     painter.doPlot( df = dfExtract.loc[:,["cases","deaths","cumcases","cumdeaths"]],
                       colOpts={"cases": {"yscale":'log'},
                             "deaths": {"yscale":'log'},
@@ -325,7 +348,7 @@ for (country,dfExtractOrig) in dtg :
                  title=f"Data from EU Data Portal\nstats for {country}",
                  legend=True,
                  xlabel=f"Days since {dateStart}",
-                 ylabel="Events per million population"   )
+                 ylabel="Daily events per million population"   )
     painter.advancePlotIndex()
 ImgMgr.save_fig("FIG008")        
 
@@ -340,7 +363,7 @@ dtg = dtx.groupby("countriesAndTerritories")
 subnodeSpec=(lambda i,j:{"nrows":i,"ncols":j})(*subPlotShape(len(dtg),maxCol=4, colFirst=False))
 
 
-# In[40]:
+# In[ ]:
 
 
 painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,20))
@@ -350,20 +373,20 @@ for (country,dfExtractOrig) in dtg :
     dfExtract = dfExtractOrig.set_index("elapsedDays").copy()
     dfExtract.loc[:,"cumcases"] = dfExtract.loc[:,"cases_weekly"].sort_index().cumsum()/dfExtract.loc[:,"popData2019"]*1.0E6
     dfExtract.loc[:,"cumdeaths"] = dfExtract.loc[:,"deaths_weekly"].sort_index().cumsum()/dfExtract.loc[:,"popData2019"]*1.0E6
-    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6
-    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6
+    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6/7
+    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6/7
     painter.doPlot(df = dfExtract.loc[:,["cases","deaths","cumcases","cumdeaths"]])
     painter.setAttrs(label=f"Days since {dateStart}",
                  title=f"Data from EU Data Portal: {country}",
                  legend=True,
                  xlabel=f"Days since {dateStart}",
-                 ylabel="Events per million population"   )
+                 ylabel="Daily events per million population"   )
         
     painter.advancePlotIndex()  
 ImgMgr.save_fig("FIG009")  
 
 
-# In[41]:
+# In[ ]:
 
 
 painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,20))
@@ -372,20 +395,40 @@ for (country,dfExtractOrig) in dtg :
     print(f"Country={country}, pop:{pop/1.0E6}M")
     dfExtract = dfExtractOrig.set_index("elapsedDays").copy()
     dfExtract.loc[:,"cumdeaths"] = dfExtract.loc[:,"deaths_weekly"].sort_index().cumsum()/dfExtract.loc[:,"popData2019"]*1.0E6
-    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6
-    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6
+    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6/7
+    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6/7
     painter.doPlot(df = dfExtract.loc[:,["cases","deaths","cumdeaths"]])
     painter.setAttrs(label=f"Days since {dateStart}",
                  title=f"Data from EU Data Portal: {country}",
                  legend=True,
                  xlabel=f"Days since {dateStart}",
-                 ylabel="Events per million population"   )
+                 ylabel="Daily events per million population"   )
         
     painter.advancePlotIndex()  
 ImgMgr.save_fig("FIG019")  
 
 
-# In[42]:
+# In[ ]:
+
+
+painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,20))
+for (country,dfExtractOrig) in dtg :
+    pop = dfExtractOrig["popData2019"][0]
+    print(f"Country={country}, pop:{pop/1.0E6}M")
+    dfExtract = dfExtractOrig.set_index("elapsedDays").copy()    
+    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6/7
+    painter.doPlot(df = dfExtract.loc[:,["deaths"]])
+    painter.setAttrs(label=f"Days since {dateStart}",
+                 title=f"Data from EU Data Portal: {country}",
+                 legend=True,
+                 xlabel=f"Days since {dateStart}",
+                 ylabel="Daily events per million population"   )
+        
+    painter.advancePlotIndex()  
+ImgMgr.save_fig("FIG019B")  
+
+
+# In[ ]:
 
 
 painter = figureFromFrame(None,  subplots=subnodeSpec, figsize=(15,20))
@@ -395,8 +438,8 @@ for (country,dfExtractOrig) in dtg :
     dfExtract = dfExtractOrig.set_index("elapsedDays").copy()
     dfExtract.loc[:,"cumcases"] = dfExtract.loc[:,"cases_weekly"].sort_index().cumsum()/dfExtract.loc[:,"popData2019"]*1.0E6
     dfExtract.loc[:,"cumdeaths"] = dfExtract.loc[:,"deaths_weekly"].sort_index().cumsum()/dfExtract.loc[:,"popData2019"]*1.0E6
-    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6
-    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6
+    dfExtract.loc[:,"cases"] = dfExtract.loc[:,"cases_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6/7
+    dfExtract.loc[:,"deaths"] = dfExtract.loc[:,"deaths_weekly"]/dfExtract.loc[:,"popData2019"]*1.0E6/7
     painter.doPlot( df = dfExtract.loc[:,["cases","deaths","cumcases","cumdeaths"]],
                       colOpts={"cases": {"yscale":'log'},
                             "deaths": {"yscale":'log'},
@@ -406,7 +449,7 @@ for (country,dfExtractOrig) in dtg :
                  title=f"Data from EU Data Portal\nstats for {country}",
                  legend=True,
                  xlabel=f"Days since {dateStart}",
-                 ylabel="Events per million population"   )
+                 ylabel="Daily events per million population"   )
     painter.advancePlotIndex()
 ImgMgr.save_fig("FIG010")        
 

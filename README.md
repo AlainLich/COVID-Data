@@ -72,6 +72,7 @@ Mostly this consists of
   <TR><TD COLSPAN="1"><CENTER>Comparison between some European countries</CENTER></TD> </TR>
   <TR> <TD> <IMG SRC="./JupySessions/images/Chap03/FIG007.jpg"/></TD> </TR>
   <TR> <TD> <IMG SRC="./JupySessions/images/Chap03/FIG017.jpg"/></TD> </TR>
+  <TR> <TD> <IMG SRC="./JupySessions/images/Chap03/FIG017B.jpg"/></TD> </TR>
     <TR> <TD><CENTER> The same in **log scale** </CENTER></TD> </TR>
    <TR> <TD> <IMG SRC="./JupySessions/images/Chap03/FIG008.jpg"/></TD> </TR>
 </TABLE>    
@@ -81,6 +82,7 @@ Mostly this consists of
   <TR><TD COLSPAN="1"><CENTER>Comparison between most populated countries</CENTER></TD> </TR>
   <TR> <TD> <IMG SRC="./JupySessions/images/Chap03/FIG009.jpg"/></TD> </TR>
   <TR> <TD> <IMG SRC="./JupySessions/images/Chap03/FIG019.jpg"/></TD> </TR>
+  <TR> <TD> <IMG SRC="./JupySessions/images/Chap03/FIG019B.jpg"/></TD> </TR>
     <TR> <TD><CENTER> The same in **log scale** </CENTER></TD> </TR>
    <TR> <TD> <IMG SRC="./JupySessions/images/Chap03/FIG010.jpg"/></TD> </TR>
 </TABLE>    
