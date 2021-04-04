@@ -6,7 +6,8 @@ __license__ = 'MIT License'
 __version__ = '1.1'
 
 from   lib.utilities import *
-import requests, sys, pprint, pickle, time, shutil
+
+import requests, sys, os.path, pprint, pickle, time, shutil
 from   collections   import Iterable, Mapping
 import urllib, hashlib
 
@@ -15,6 +16,7 @@ import pandas 		 as 	PAN
 from rdflib import Graph, Literal, BNode, Namespace,  RDF, URIRef
 from rdflib.namespace import NamespaceManager
 from lxml import etree, html
+
 from lib.DataMgr import *
 import lib.RDFandQuery as RDFQ
 import lib.RdfEU       as RDFEU
@@ -238,8 +240,8 @@ PREFIX dc: <http://purl.org/dc/terms/>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 
-SELECT distinct ?g ?title ?dsURI ?DatasetTitle ?Publisher ?dloadurl ?lang ?issue ?mod ?source ?sz ?frequency ?rissue ?fmt ?Resource ?ResourceDescription 
-WHERE { GRAPH ?g { filter regex(?title, 'COVID', 'i'). 
+SELECT distinct ?g ?title ?dsURI ?DatasetTitle ?Publisher ?dloadurl ?lang ?issue ?mod ?source ?sz ?frequency ?Resource ?ResourceDescription 
+WHERE { GRAPH ?g { filter regex(?title, '^COVID.*data', 'i'). 
                    FILTER langMatches( lang(?title), "EN" ).
                    ?dsURI    a        dcat:Dataset.
                    ?dsURI    dc:title ?title .
@@ -253,11 +255,11 @@ WHERE { GRAPH ?g { filter regex(?title, 'COVID', 'i').
                    OPTIONAL { ?Resource dc:description ?ResourceDescription. }
                    OPTIONAL { ?Resource  dcat:downloadURL ?dloadurl. }
                    OPTIONAL { ?Resource  dcat:byteSize ?sz. }
-                   OPTIONAL { ?Resource  dc:format     ?fmt . }
-                   OPTIONAL { ?Resource  dc:issued     ?rissue. }
+                   #OPTIONAL { ?Resource  dc:format     ?fmt . }
+                   #OPTIONAL { ?Resource  dc:issued     ?rissue. }
         }  
 } 
-  ORDER BY ?mod ?title ?fmt
+  ORDER BY ?mod ?title 
   LIMIT 200
   OFFSET 0
 """
@@ -294,7 +296,33 @@ WHERE { GRAPH ?g { filter regex(?title, 'COVID', 'i').
 
     _updtEntryFlds = ('reason', 'fname', 'url', 'org', 'checksum', 'format',
                          'modDate', 'cachedDate', 'filesize', 'genKey', 'frequency')
-          
+    def _extractFMT(url):
+        """
+           Since it seems that trying to obtain fmt from the european database
+           results in job rejection for excess anticipated compute time,
+           this function extracts the information from the url.
+
+           Note: I should investigate the reason for the new behaviour of the
+           SPARQL database (schema update ? size ? encoding)
+           The release notes are dated 14 July 2020 (After I did my development and
+           tested)
+           https://joinup.ec.europa.eu/collection/semantic-interoperability-community-semic/solution/dcat-application-profile-data-portals-europe/release/201-0
+           A complete list of the issues and their resolution can be found on the 
+           DCAT-AP GitHub
+           https://github.com/SEMICeu/DCAT-AP/tree/master/releases/2.0.1
+
+        """
+        parsed = urllib.parse.urlparse(url)
+        spl   = os.path.split(parsed.path)
+        tdir =  os.path.split(spl[0])[1]
+        fext=  spl[1].split(".")[-1]
+        if tdir != fext or fext not in ("csv", "xml", "json", "xlsx"):
+          print( f"Unexpected file extension ({fext}) or subdir {tdir} location" +
+                 f"for URL:\n\t{url}",
+              file =  sys.stderr)
+        return fext
+
+        
     def _mkUpdtlistFromTbl(self):
         # this shows the format of what we have to assemble
         #          updtList.append( { 'reason':reason,'fname':fname, 'url':url, 'org':org,
@@ -311,7 +339,9 @@ WHERE { GRAPH ?g { filter regex(?title, 'COVID', 'i').
             updtEnt['url'] = str(url)
             
             fn    = dfExtract['dsURI'].iloc[0].split("/")[-1]
-            ftype = dfExtract['fmt'].iloc[0].split("/")[-1].lower()
+            print(f"URL={str(url)}\ndsURI={dfExtract['dsURI'].iloc[0]}\nfn={fn}")
+            #ftype = dfExtract['fmt'].iloc[0].split("/")[-1].lower()
+            ftype =  manageAndCacheDataFilesRdfEU._extractFMT(str(url)) 
             updtEnt['fname']  = fn + '.' + ftype
             updtEnt['genKey']  = fn + '.' + ftype
             updtEnt['format'] = ftype

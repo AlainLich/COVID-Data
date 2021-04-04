@@ -31,17 +31,22 @@ class manageAndCacheDataFilesJSON(  manageAndCacheDataFiles):
         setDefaults(self.options, kwdOpts, manageAndCacheDataFilesJSON.defaultOpts)
         
     def _getRemoteMetaFromServer(self):
-          if 'HttpRQT' in self.options and  self.options['HttpRQT'] != 'POST': 
-              url = "/".join( map (lambda x:self.options[x],('HttpHDR','ApiInq')))
-              resp = requests.get(url=url, params=self.options['InqParmsDir'],
-                                  timeout= self.options['httpTimeOut'])
-          else:
-              url = "/".join( map (lambda x:self.options[x],
-                                   ( x for x in ('HttpHDR','ApiInqHdr','ApiInq')
-                                        if x in self.options  )))
-              resp = requests.post(url=url, headers=self.options[ 'ApiHeaders' ], 
-                                   params=self.options['InqParmsDir'],
-                                   timeout= self.options['httpTimeOut'])              
+          try:
+              if 'HttpRQT' in self.options and  self.options['HttpRQT'] != 'POST': 
+                  url = "/".join( map (lambda x:self.options[x],('HttpHDR','ApiInq')))
+                  resp = requests.get(url=url, params=self.options['InqParmsDir'],
+                                      timeout= self.options['httpTimeOut'])
+              else:
+                  url = "/".join( map (lambda x:self.options[x],
+                                       ( x for x in ('HttpHDR','ApiInqHdr','ApiInq')
+                                            if x in self.options  )))
+                  resp = requests.post(url=url, headers=self.options[ 'ApiHeaders' ], 
+                                       params=self.options['InqParmsDir'],
+                                       timeout= self.options['httpTimeOut'])
+          except Exception as err:
+               print(   f"An unexpected error has occurred during http request\n"
+                      + f"\t{type(err)}\n\t{err}", file = sys.stderr )
+              
           cde =resp.status_code
           cdeTxt = requests.status_codes._codes[cde][0]
 

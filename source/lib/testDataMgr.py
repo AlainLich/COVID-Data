@@ -95,11 +95,13 @@ if __name__ == "__main__":
     class DGTestEU(unittest.TestCase):
         """ First series of test concerns Covid data on European Data portal
         """
+        siteOpts= {"maxDirSz": 80*(2**10)**2}
+        
         def test_baseLocal(self):
             """ Example using local information
             """
 
-            dataFileVMgr = manageDataFileVersions("../dataEU")
+            dataFileVMgr = manageDataFileVersions("../dataEU", **DGTestEU.siteOpts)
             print("Most recent versions of files in data directory:")
             for f in dataFileVMgr.listMostRecent() :
                 print(f"\t{f}")
@@ -108,7 +110,7 @@ if __name__ == "__main__":
         def test_remote(self):
             """ Example using remote information
             """
-            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU")
+            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU", **DGTestEU.siteOpts)
             dataFileVMgr.getRemoteInfo()
             # dataFileVMgr.pprintDataResources(bulk=True)
             #dataFileVMgr.updatePrepare()
@@ -118,7 +120,7 @@ if __name__ == "__main__":
         def test_pprint(self):
             """ Example of pretty printing of remote/cached information
             """
-            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU")
+            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU", **DGTestEU.siteOpts)
             dataFileVMgr.getRemoteInfo( localOnly = True)
             dataFileVMgr.pprintDataItem( item="description")
 
@@ -127,14 +129,14 @@ if __name__ == "__main__":
                 Check situation where the `item` calls for  subfields 'name' and 'class'
                 of  'organizations'
             """
-            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU")
+            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU", **DGTestEU.siteOpts)
             dataFileVMgr.getRemoteInfo( localOnly = True)
             dataFileVMgr.pprintDataItem( item=".*org.*/^(name|class)$")
 
         def test_pprint3(self):
             """
             """
-            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU")
+            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU",  **DGTestEU.siteOpts)
             dataFileVMgr.getRemoteInfo( localOnly = True)
 
             dataFileVMgr.pprintDataItem( item="resul.*/dataset/.*", showVals=False)
@@ -145,7 +147,7 @@ if __name__ == "__main__":
                      results:dataset:distribution_dcat:uri:(0.0.0.0):>>>'http://data.europa.eu/88u/distribution/260bbbde-2316-40eb-aec3-7cd7bfc2f590'
                      This was an interesting csv, however the meta information is not great! 
             """
-            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU")
+            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU", **DGTestEU.siteOpts)
             dataFileVMgr.getRemoteInfo( localOnly = True)
 
             dataFileVMgr.pprintDataItem( item="resul.*/dataset/distrib.*/(uri|descrip.*|.*url.*|.*download.*|title)/.*",
@@ -157,7 +159,7 @@ if __name__ == "__main__":
                 Check situation where the `item` calls for all subfields of
                 organizations
             """
-            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU")
+            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU", **DGTestEU.siteOpts)
             dataFileVMgr.getRemoteInfo( localOnly = True)
             dataFileVMgr.pprintDataItem( item="resul.*/dataset$$^ca.*/lang.*/.*", showVals=False)
             
@@ -165,7 +167,7 @@ if __name__ == "__main__":
         def test_dump(self):
             """ Example of pretty printing of remote/cached information
             """
-            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU")
+            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU", **DGTestEU.siteOpts)
             dataFileVMgr.getRemoteInfo( localOnly = True)
             dataFileVMgr.pprintDataResources( bulk = True, result=True, success=True)
 
@@ -173,18 +175,19 @@ if __name__ == "__main__":
         def test_help(self):
             """ Example of pretty printing of remote/cached help information
             """
-            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU")
+            dataFileVMgr = manageAndCacheDataFilesEU("../dataEU", **DGTestEU.siteOpts)
             dataFileVMgr.getRemoteInfo( localOnly = True)
             dataFileVMgr.pprintDataResources( bulk = True, help= True, success=True)
             
     class DGTestRdfEU(unittest.TestCase):
         """ First series of test concerns Covid data on European Data portal
         """
+        siteOpts= {"maxDirSz": 80*(2**10)**2}
         def test_baseLocal(self):
             """ Example using local information
             """
 
-            dataFileVMgr = manageDataFileVersions("../dataEURdf")
+            dataFileVMgr = manageDataFileVersions("../dataEURdf", **DGTestRdfEU.siteOpts)
             print("Most recent versions of files in data directory:")
             for f in dataFileVMgr.listMostRecent() :
                 print(f"\t{f}")
@@ -194,7 +197,8 @@ if __name__ == "__main__":
             """ Example using remote information
             """
             dataFileVMgr = manageAndCacheDataFilesRdfEU( "../dataEURdf",
-                dumpMetaFile= "/tmp/dumpSPARQLresult.xml")  #dump the SPARQL query response
+                dumpMetaFile= "/tmp/dumpSPARQLresult.xml",
+                **DGTestRdfEU.siteOpts)  #dump the SPARQL query response
             
             dataFileVMgr.getRemoteInfo()
             # dataFileVMgr.pprintDataResources(bulk=True)
@@ -266,7 +270,8 @@ if __name__ == "__main__":
         def test_remoteDF(self):
             """ Example using remote information with cached json
             """
-            dataFileVMgr = manageAndCacheFilesDFrame("../dataPop", ** DGTestPopDemo.defaultPop)
+            dataFileVMgr = manageAndCacheFilesDFrame("../dataPop",
+                                                     ** DGTestPopDemo.defaultPop)
             dataFileVMgr.getRemoteInfo()
             # dataFileVMgr.pprintDataResources(bulk=True)
             dataFileVMgr.updatePrepare()

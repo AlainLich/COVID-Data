@@ -116,8 +116,14 @@ http://www2.census.gov/programs-surveys/popest/datasets/2010-2019/national</A>.
 
    - perform some data analyses (model parameter fitting), see: <A HREF="./JupySessions/FIT-Data-FromGouv.ipynb">./JupySessions/FIT-Data-FromGouv.ipynb</A>
    
-   For more information on changes (and bugs), see the git log.
-
+### Bugs and changes
+  - For more information on changes (and bugs), see the git log.
+  - An issue concerning the European site ̀data.europa.eu` has been corrected, see 
+  [README-Bug-X-EuRDF.md](./README-Bug-X-EuRDF.md)
+  
+  - **TBD**: reduce redundancy (same files with different extensions) in cached data, 
+  for now caches take more space than really needed
+  
 ## install requirement
 ### Python
 - This requires Python 3, and has been tested with Python 3.8.2, on a Linux

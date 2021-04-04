@@ -9,7 +9,7 @@
 
 # # Libraries
 
-# In[ ]:
+# In[1]:
 
 
 # Sys import
@@ -42,7 +42,7 @@ import xlrd
 import numpy as NP
 
 
-# In[ ]:
+# In[2]:
 
 
 import warnings
@@ -54,7 +54,7 @@ print("For now, reduce python warnings, I will look into this later")
 # The next cell attempts to give user some information if things improperly setup.
 # Intended to work both in Jupyter and when executing the Python file directly.
 
-# In[ ]:
+# In[3]:
 
 
 if not get_ipython() is None and os.path.abspath("../source/") not in sys.path:
@@ -86,7 +86,7 @@ except Exception as err:
 # My package library is in `../source/lib`, and users running under Python (not in Jupyter) should
 # set their PYTHONPATH to include "../source" ( *or whatever appropriate* ).
 
-# In[ ]:
+# In[4]:
 
 
 checkSetup(chap="Chap03")
@@ -107,16 +107,16 @@ ImgMgr = ImageMgr(chapdir="Chap03")
 # <FONT COLOR="RED">TO BE CHECKED For the files used in this notebook, the latest version is used/loaded irrespective of the
 # timestamp used in the notebook.</FONT>
 
-# In[ ]:
+# In[7]:
 
 
-dataFileVMgr = manageAndCacheDataFilesRdfEU( "../dataEURdf", maxDirSz= 80*(2**10)**2)
+dataFileVMgr = manageAndCacheDataFilesRdfEU( "../dataEURdf", maxDirSz= 180*(2**10)**2)
 dataFileVMgr.getRemoteInfo()
 
 
 # This can be long, the SPARQL processor used is not fast
 
-# In[ ]:
+# In[8]:
 
 
 dataFileVMgr.updatePrepare()
@@ -125,7 +125,7 @@ dataFileVMgr.cacheUpdate()
 
 # ## Get some understanding of the available resource
 
-# In[ ]:
+# In[9]:
 
 
 nbLastDays = 30
@@ -133,7 +133,7 @@ nbLastDays = 30
 
 # ## Dig into the data
 
-# In[ ]:
+# In[10]:
 
 
 print("Most recent versions of files in data directory:")
@@ -141,26 +141,26 @@ for f in dataFileVMgr.listMostRecent(nonTS=True) :
     print(f"\t{f}")
 
 
-# In[ ]:
+# In[11]:
 
 
 last = lambda x: dataFileVMgr.getRecentVersion(x,default=os.path.join(dataFileVMgr.dirpath,x))
 
 
-# In[ ]:
+# In[12]:
 
 
 dataFileVMgr.nonTSFiles
 
 
-# In[ ]:
+# In[13]:
 
 
 covidDataEUCsv = last("covid-19-coronavirus-data.csv")
 data_covidDataEU  = read_csvPandas(covidDataEUCsv , error_bad_lines=False,sep="," )
 
 
-# In[ ]:
+# In[14]:
 
 
 data_covidDataEU.info()
@@ -168,14 +168,14 @@ data_covidDataEU.info()
 
 # After the transformation to weekly data, check that numbers are really weekly, dates appear in 'DateRep' and also in 'year_week' in distinct formats. Checked weekly results with "StopCovid" application at https://www.gouvernement.fr/info-coronavirus/tousanticovid (still factor 2 discrepancy ?) .
 
-# In[ ]:
+# In[15]:
 
 
 msk= data_covidDataEU.loc[:,'countriesAndTerritories'] == 'France'
 data_covidDataEU[msk].iloc[:3]
 
 
-# In[ ]:
+# In[16]:
 
 
 def sortedIds(df,col):
@@ -183,7 +183,7 @@ def sortedIds(df,col):
    return sorted([ x  for x in t if isinstance(x, str) ])
 
 
-# In[ ]:
+# In[17]:
 
 
 data_covidDataEU.columns
@@ -191,7 +191,7 @@ data_covidDataEU.columns
 
 # This seems necessary, since there were NaNs in the "geoId" column
 
-# In[ ]:
+# In[18]:
 
 
 for coln in ("geoId" , "countryterritoryCode", "countriesAndTerritories"):
@@ -199,13 +199,13 @@ for coln in ("geoId" , "countryterritoryCode", "countriesAndTerritories"):
     print(f"{coln:30}-> {len(si)} elts")
 
 
-# In[ ]:
+# In[19]:
 
 
 data_covidDataEU["date"] = PAN.to_datetime(data_covidDataEU.loc[:,"dateRep"], format="%d/%m/%Y")
 
 
-# In[ ]:
+# In[20]:
 
 
 dateStart = data_covidDataEU["date"].min()
@@ -216,34 +216,34 @@ print(f"Our statistics span {dateSpan.days+1} days, start: {dateStart} and end {
 data_covidDataEU["elapsedDays"] = (data_covidDataEU["date"] - dateStart).dt.days
 
 
-# In[ ]:
+# In[21]:
 
 
 data_covidDataEU["elapsedDays"][:3] 
 
 
-# In[ ]:
+# In[22]:
 
 
 dt  = data_covidDataEU.copy()
 dt = dt.set_index("continentExp")
 
 
-# In[ ]:
+# In[23]:
 
 
 dtx = dt[dt.index == "Europe"]
 dtg = dtx.groupby("countriesAndTerritories")
 
 
-# In[ ]:
+# In[24]:
 
 
 for (country,dfExtract) in dtg:
     print(f"{country:30}\t-> data over {dfExtract.shape[0]*7} days")
 
 
-# In[ ]:
+# In[25]:
 
 
 for (country,dfExtract) in dtg :
@@ -254,7 +254,7 @@ for (country,dfExtract) in dtg :
        #painter.doPlot()
 
 
-# In[ ]:
+# In[26]:
 
 
 dtx = dt[ (dt.index == "Europe") & (dt["popData2019"] > 10.0e6) ]
@@ -262,7 +262,7 @@ dtg = dtx.groupby("countriesAndTerritories")
 subnodeSpec=(lambda i,j:{"nrows":i,"ncols":j})(*subPlotShape(len(dtg),maxCol=4))
 
 
-# In[ ]:
+# In[27]:
 
 
 painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
@@ -285,7 +285,7 @@ for (country,dfExtractOrig) in dtg :
 ImgMgr.save_fig("FIG007")  
 
 
-# In[ ]:
+# In[28]:
 
 
 painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
@@ -307,7 +307,7 @@ for (country,dfExtractOrig) in dtg :
 ImgMgr.save_fig("FIG017")  
 
 
-# In[ ]:
+# In[29]:
 
 
 painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
@@ -327,7 +327,7 @@ for (country,dfExtractOrig) in dtg :
 ImgMgr.save_fig("FIG017B")  
 
 
-# In[ ]:
+# In[30]:
 
 
 painter = figureFromFrame(None,  subplots=subnodeSpec, figsize=(15,15))
@@ -355,7 +355,7 @@ ImgMgr.save_fig("FIG008")
 
 # ### Look at the largest countries
 
-# In[ ]:
+# In[31]:
 
 
 dtx = dt[ dt["popData2019"] > 65.0e6 ]
@@ -363,7 +363,7 @@ dtg = dtx.groupby("countriesAndTerritories")
 subnodeSpec=(lambda i,j:{"nrows":i,"ncols":j})(*subPlotShape(len(dtg),maxCol=4, colFirst=False))
 
 
-# In[ ]:
+# In[32]:
 
 
 painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,20))
@@ -386,7 +386,7 @@ for (country,dfExtractOrig) in dtg :
 ImgMgr.save_fig("FIG009")  
 
 
-# In[ ]:
+# In[33]:
 
 
 painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,20))
@@ -408,7 +408,7 @@ for (country,dfExtractOrig) in dtg :
 ImgMgr.save_fig("FIG019")  
 
 
-# In[ ]:
+# In[34]:
 
 
 painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,20))
@@ -428,7 +428,7 @@ for (country,dfExtractOrig) in dtg :
 ImgMgr.save_fig("FIG019B")  
 
 
-# In[ ]:
+# In[35]:
 
 
 painter = figureFromFrame(None,  subplots=subnodeSpec, figsize=(15,20))
@@ -452,6 +452,12 @@ for (country,dfExtractOrig) in dtg :
                  ylabel="Daily events per million population"   )
     painter.advancePlotIndex()
 ImgMgr.save_fig("FIG010")        
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:
