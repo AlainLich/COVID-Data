@@ -94,7 +94,18 @@ def DFIndexDaysElapsed( df, newDteCol="dteStr", format='%Y-%m-%d'):
     elapsedDays =   dt - dt[0]
     df.index =  elapsedDays.days
     df.loc[ : , newDteCol] = origIndex
-         
+
+
+def sortedColIds(df,col):
+    """ Given a dataframe and a column name, which should contain string ids,
+        it returns the  sorted list of unique values in that column. 
+
+        Useful in preparation for moving these values to index/colname. 
+    """
+    t = df.loc[:,col].unique()
+    return sorted([ x  for x in t if isinstance(x, str) ])
+
+    
 if __name__ == "__main__":
     import unittest
     import sys

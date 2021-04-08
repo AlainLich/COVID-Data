@@ -39,7 +39,9 @@ class  figureFromFrame(object):
         Keywords listed in defaultOpts are honored.
     """
     defaultOpts = {"figsize":(8.0,6.0),"subplotIndex":1}
-    excludeFiltered = ("subplots", 'subplotIndex')
+    
+    # should we have a white list instead of a blacklist?    
+    excludeFiltered = ("subplots", 'subplotIndex', 'dateTranslate')
     def __init__(self, df, **kwdOpts):
         self._setDf( df, NZOnly = False)
         self.optd={}
@@ -224,14 +226,18 @@ class  figureTSFromFrame(figureFromFrame):
             practice, .... a more sophisticated scheme will be put in place in case such
             things continue to pop up.
         """
-        mobj =  figureTSFromFrame. dateTranslatorRegexp.match(dte)
-        if mobj:
-           mg = mobj.groups()
-           return mg[2] + "-" + mg[1] + "-" + mg[0] 
-        else:
-            return dte
-
-# Two examples of using this class are given below:
+        try:
+            mobj =  figureTSFromFrame. dateTranslatorRegexp.match(dte)
+            if mobj:
+               mg = mobj.groups()
+               return mg[2] + "-" + mg[1] + "-" + mg[0] 
+            else:
+                return dte
+        except Exception as err:
+            print(f"Unable to translate date {type(dte)}{dte}", file=sys.stderr)
+            raise err
+        
+    # Two examples of using this class are given below:
 
 ##  Output and more details at https://github.com/AlainLich/COVID-Data
 

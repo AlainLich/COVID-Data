@@ -46,25 +46,43 @@ class perStateFigure(object):
     """ This permits to make figures of data organized by State, it is expected that 
         derived classes will bring different selections and orderings; further 
         parametrization is also envisionned
+
     """
-    def __init__(self, dateStart):
+    defaultOpts = {
+         "breakCond" : lambda count, state : count > 30,
+         "skipCond"  : lambda count, state : False,
+        }
+
+    def __init__(self, dateStart,**kwdOpts):
+        """
+        Args: dateStart: date for starting the (X axis) timescale
+              breakCond: function of count and state, if returns True building
+                         loop is terminated
+              IfCond: function of count and state, if returns False building
+                         loop skips, count does not increment when skipping
+        """
         self.dateStart = dateStart
+        self.options = {}
+        setDefaults(self.options, kwdOpts,  perStateFigure.defaultOpts)
 
     def initPainter(self, subnodeSpec=None, figsize=(15,15), maxCol=6, colFirst=False):
         if subnodeSpec is None:
             subnodeSpec = self.subnodeSpec
         elif isinstance(subnodeSpec,int):
-            self.subnodeSpec = (lambda i,j:{"nrows":i,"ncols":j})                                        (*subPlotShape( subnodeSpec, maxCol=maxCol,
+            self.subnodeSpec = (lambda i,j:{"nrows":i,"ncols":j})(
+                                       *subPlotShape( subnodeSpec, maxCol=maxCol,
                                                        colFirst=colFirst))
             subnodeSpec = self.subnodeSpec
             
         self.painter = figureFromFrame(None, subplots=subnodeSpec, figsize=figsize)
 
     def skipIfCond(self, count, state):
-        return False
+        return self.options["skipCond"](count, state)
 
     def breakIfCond(self, count, state):
-        return count > 15
+        return self.options["breakCond"](count, state)
+
+
 
     def getDemographics(self, data_USAPopChangeTbl):
         """
@@ -112,6 +130,7 @@ class perStateFigure(object):
             count+=1
             if self.skipIfCond(count, state):
                 continue
+            count+=1
             if self.breakIfCond(count, state):
                 break
             

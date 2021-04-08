@@ -339,8 +339,6 @@ WHERE { GRAPH ?g { filter regex(?title, '^COVID.*data', 'i').
             updtEnt['url'] = str(url)
             
             fn    = dfExtract['dsURI'].iloc[0].split("/")[-1]
-            print(f"URL={str(url)}\ndsURI={dfExtract['dsURI'].iloc[0]}\nfn={fn}")
-            #ftype = dfExtract['fmt'].iloc[0].split("/")[-1].lower()
             ftype =  manageAndCacheDataFilesRdfEU._extractFMT(str(url)) 
             updtEnt['fname']  = fn + '.' + ftype
             updtEnt['genKey']  = fn + '.' + ftype

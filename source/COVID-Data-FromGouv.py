@@ -7,7 +7,7 @@
 
 # # Libraries
 
-# In[1]:
+# In[ ]:
 
 
 # Sys import
@@ -39,7 +39,7 @@ import pandas as PAN
 import xlrd
 
 
-# In[2]:
+# In[ ]:
 
 
 import warnings
@@ -51,7 +51,7 @@ print("For now, reduce python warnings, I will look into this later")
 # The next cell attempts to give user some information if things improperly setup.
 # Intended to work both in Jupyter and when executing the Python file directly.
 
-# In[3]:
+# In[ ]:
 
 
 if not get_ipython() is None and os.path.abspath("../source/") not in sys.path:
@@ -84,7 +84,7 @@ except Exception as err:
 # My package library is in `../source/lib`, and users running under Python (not in Jupyter) should
 # set their PYTHONPATH to include "../source" ( *or whatever appropriate* ).
 
-# In[4]:
+# In[ ]:
 
 
 checkSetup(chap="Chap01")
@@ -92,6 +92,13 @@ ImgMgr = ImageMgr(chapdir="Chap01")
 
 
 # # Load Data
+
+# Vaccination data: https://www.data.gouv.fr/en/datasets/donnees-relatives-aux-personnes-vaccinees-contre-la-covid-19/
+# https://www.data.gouv.fr/en/datasets/r/eb672d49-7cc7-4114-a5a1-fa6fd147406b
+# https://www.data.gouv.fr/en/datasets/r/eb672d49-7cc7-4114-a5a1-fa6fd147406b
+# https://www.data.gouv.fr/en/datasets/r/b234a041-b5ea-4954-889b-67e64a25ce0d
+# 
+# Badges: vaccins covid19 (sans tiret???)
 
 # ## Functions
 
@@ -108,16 +115,16 @@ ImgMgr = ImageMgr(chapdir="Chap01")
 # For the files used in this notebook, the latest version is used/loaded irrespective of the
 # timestamp used in the notebook.
 
-# In[5]:
+# In[ ]:
 
 
-dataFileVMgr = manageAndCacheDataFilesFRDG("../data", maxDirSz= 80*(2**10)**2)
+dataFileVMgr = manageAndCacheDataFilesFRDG("../data", maxDirSz= 180*(2**10)**2)
 dataFileVMgr.getRemoteInfo()
 dataFileVMgr.updatePrepare()
 dataFileVMgr.cacheUpdate()
 
 
-# In[6]:
+# In[ ]:
 
 
 print("Most recent versions of files in data directory:")
@@ -125,7 +132,7 @@ for f in dataFileVMgr.listMostRecent() :
     print(f"\t{f}")
 
 
-# In[7]:
+# In[ ]:
 
 
 last = lambda x: dataFileVMgr.getRecentVersion(x,default=True)
@@ -134,11 +141,11 @@ last = lambda x: dataFileVMgr.getRecentVersion(x,default=True)
 # This ensures we load the most recent version, so that it is not required to update the list 
 # below. The timestamps shown in the following sequence will be update by the call to `getRecentVersion`.
 
-# In[8]:
+# In[ ]:
 
 
-dailyDepCsv    = last("sursaud-covid19-quotidien-2020-04-11-19h00-departement.csv")
-dailyRegionCsv = last("sursaud-covid19-quotidien-2020-04-11-19h00-region.csv")
+dailyDepCsv    = last("sursaud-corona-quot-dep-2021-04-08-21h20.csv")
+dailyRegionCsv = last("sursaud-corona-quot-reg-2021-04-03-19h33.csv")
 dailyFranceCsv = last("sursaud-covid19-quotidien-2020-04-12-19h00-france.csv")
 dailyXlsx      = last("sursaud-covid19-quotidien-2020-04-12-19h00.xlsx")
 weeklyCsv      = last("sursaud-covid19-hebdomadaire-2020-04-08-19h00.csv")
@@ -177,7 +184,7 @@ metaRegionsCsv="../data/regions-france.csv"
 metaTranchesAgeCsv="../data/code-tranches-dage.csv"
 
 
-# In[9]:
+# In[ ]:
 
 
 ad  = lambda x: "../data/"+x
@@ -195,12 +202,12 @@ if len(missing) > 0:
 # Now load the stuff
 # 
 
-# In[11]:
+# In[ ]:
 
 
 ad  = lambda x: "../data/"+x
-data_dailyRegion = read_csvPandas(ad(dailyRegionCsv), error_bad_lines=False,sep="," )
-data_dailyDep    = read_csvPandas(ad(dailyDepCsv), error_bad_lines=False,sep=",")
+data_dailyRegion = read_csvPandas(ad(dailyRegionCsv), error_bad_lines=False,sep=";" )
+data_dailyDep    = read_csvPandas(ad(dailyDepCsv), error_bad_lines=False,sep=";")
 data_dailyFrance = read_csvPandas(ad(dailyFranceCsv), error_bad_lines=False,sep=",")
 data_daily       = read_xlsxPandas(ad(dailyXlsx))
 data_weekly      = read_csvPandas(ad(weeklyCsv), error_bad_lines=False,sep=";")
@@ -229,7 +236,7 @@ meta_Ages    =  read_csvPandas(metaTranchesAgeCsv, clearNaN=True, error_bad_line
 
 # ## Figure out data characteristics
 
-# In[12]:
+# In[ ]:
 
 
 def showBasics(data,dataName):
@@ -267,7 +274,7 @@ for (dat,name) in dataListDescr:
 # Of course I encountered some surprises, see `checkRepresentedRegions` issue with unknown codes which
 # did occur in some files!
 
-# In[13]:
+# In[ ]:
 
 
 def checkRepresentedRegions(df,col='reg',**kwOpts):
@@ -285,7 +292,7 @@ def checkRepresentedRegions(df,col='reg',**kwOpts):
     return regs
 
 
-# In[14]:
+# In[ ]:
 
 
 for (dat,name) in dataListDescr:
@@ -294,7 +301,7 @@ for (dat,name) in dataListDescr:
     display(dat.describe().transpose())
 
 
-# In[15]:
+# In[ ]:
 
 
 for (dat,name) in dataListDescr:
@@ -306,7 +313,7 @@ for (dat,name) in dataListDescr:
 # ## Read the meta data characterising resources on the remote site
 # This is a demo of the capabilities of  class `manageAndCacheDataFile`.
 
-# In[16]:
+# In[ ]:
 
 
 dataFileVMgr.pprintDataItem( item=".*org.*/^(name|class)$")
@@ -318,7 +325,7 @@ dataFileVMgr.pprintDataItem( item="resource.*/(f.*|title.*)")
 # 
 # Using the base version which does not try to update the "../dataPop" directory
 
-# In[18]:
+# In[ ]:
 
 
 dataFileVMgrInsee = manageDataFileVersions("../dataPop") 
@@ -329,7 +336,7 @@ inseeReg            = read_xlsxPandas(inseeDepXLS,  sheet_name=0, header=7)
 
 # Now we can display our demographics data (summarized)
 
-# In[19]:
+# In[ ]:
 
 
 display(inseeDep.iloc[:,4:].sum())
@@ -344,7 +351,7 @@ display(inseeReg.iloc[:,4:].sum())
 
 # Select age category '0', thus getting all ages
 
-# In[20]:
+# In[ ]:
 
 
 def select_Ages(df, ageGroup='0'):
@@ -353,7 +360,7 @@ def select_AllAges(df):
     return select_Ages(df)
 
 
-# In[21]:
+# In[ ]:
 
 
 def groupByDate(df):
@@ -362,14 +369,14 @@ def groupByDate(df):
 
 # First, I work with the dailyRegion data, summing up for all regions.
 
-# In[22]:
+# In[ ]:
 
 
 gr_all_age_regions = groupByDate(select_AllAges(data_dailyRegion)).sum()
 checkRepresentedRegions(data_dailyRegion, print=True);
 
 
-# In[23]:
+# In[ ]:
 
 
 dfGr = PAN.DataFrame(gr_all_age_regions.copy(), columns=gr_all_age_regions.columns[1:])
@@ -387,7 +394,7 @@ ImgMgr.save_fig("FIG002")
 
 # Then, I look at the national data, as represented in `data_dailyFrance` and `data_daily`
 
-# In[24]:
+# In[ ]:
 
 
 print(f"data_daily: {data_daily.shape}")
@@ -404,7 +411,7 @@ display(data_dailyFrance[:5])
 # ### Hospital data
 # DF: hospNouveau  File: donnees-hospitalieres-nouveaux-covid19
 
-# In[25]:
+# In[ ]:
 
 
 gr_all_data_hospNouveau=data_hospNouveau.groupby('jour').sum()
@@ -426,7 +433,7 @@ PAN.set_option('display.max_colwidth', None)
 display(meta_HospIncid[[ "Colonne","Description_EN" ]])
 
 
-# In[26]:
+# In[ ]:
 
 
 gr_all_data_hosp=data_hosp.loc[data_hosp["sexe"] == 0 ].groupby('jour').sum()
@@ -449,7 +456,7 @@ ImgMgr.save_fig("FIG003")
 
 # ### Now analyze hospital data according to sex
 
-# In[27]:
+# In[ ]:
 
 
 data_hosp_DepSex=data_hosp.set_index(["dep","sexe"])
@@ -467,7 +474,7 @@ cols2 = list(map (lambda x: x+"_F", d2s.columns))
 dm.columns = (*cols1,*cols2)
 
 
-# In[28]:
+# In[ ]:
 
 
 painter = figureTSFromFrame(dm)
@@ -490,7 +497,7 @@ ImgMgr.save_fig("FIG004")
 # ### Now analyze hospital data according to age
 # For now the data available in table `data_hospAge` covers a small number of days.... hopefully this may improve, either by more earlier data becoming available, or just by more data being collected day after day!
 
-# In[29]:
+# In[ ]:
 
 
 data_hosp_RegAge=data_hospAge.set_index(["reg","jour",'cl_age90'])
@@ -512,7 +519,7 @@ else:
   dhRAg = dhRA.groupby("jour").sum()
 
 
-# In[30]:
+# In[ ]:
 
 
 ageClasses = sorted(set(dhRAg.columns.get_level_values(1)))
@@ -527,7 +534,7 @@ if len(levAge) != len(ageClasses):
     raise RuntimeError("Inconsistent values for number of age classes")
 
 
-# In[31]:
+# In[ ]:
 
 
 colOpts = {'dc':  {"c":"b","marker":"v"},  
@@ -537,7 +544,7 @@ colOpts = {'dc':  {"c":"b","marker":"v"},
           }
 
 
-# In[32]:
+# In[ ]:
 
 
 painter = figureTSFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
@@ -569,13 +576,13 @@ ImgMgr.save_fig("FIG005")
 # This concerns testing (I have not found the meta data yet, but column labels are clear enough).
 # The `data_dailyLab` data is split between age classes and departements.
 
-# In[33]:
+# In[ ]:
 
 
 todayStr = datetime.date.today().isoformat()    # handle a data error that appeared on 5/5/2020
 
 
-# In[34]:
+# In[ ]:
 
 
 msk=d=data_dailyLab.loc[:,"jour"]<=todayStr      #there is an error in the version of the data distrib 05/05/2020
@@ -599,7 +606,7 @@ painter.setAttrs(colOpts = colOpts,
 ImgMgr.save_fig("FIG006")
 
 
-# In[35]:
+# In[ ]:
 
 
 dlGr.describe()
@@ -607,14 +614,14 @@ dlGr.describe()
 
 # Analyze laboratory data according to age
 
-# In[36]:
+# In[ ]:
 
 
 data_dailyLab.columns
 dataDLab = data_dailyLab.loc[msk,:].copy()
 
 
-# In[37]:
+# In[ ]:
 
 
 dataDLab=dataDLab.set_index(["dep","jour",'clage_covid'])
@@ -622,7 +629,7 @@ dhRA = dataDLab[ dataDLab.index.get_level_values(2)!='0' ].unstack('clage_covid'
 dhRAg = dhRA.groupby("jour").sum()
 
 
-# In[38]:
+# In[ ]:
 
 
 ageClasses = sorted(set(dhRAg.columns.get_level_values(1)))
@@ -637,7 +644,7 @@ if len(levAge) != len(ageClasses):
     raise RuntimeError("Inconsistent values for number of age classes")
 
 
-# In[39]:
+# In[ ]:
 
 
 colOpts = {'nb_test': {"c":"b", "marker":"*"},  
@@ -649,7 +656,7 @@ colOpts = {'nb_test': {"c":"b", "marker":"*"},
           }
 
 
-# In[40]:
+# In[ ]:
 
 
 painter = figureTSFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
@@ -681,7 +688,7 @@ ImgMgr.save_fig("FIG007")
 # Prepare the data for a database style join/merge, documented on https://pandas.pydata.org/pandas-docs/stable/user_guide/merging.html.
 # First we need to establish "dep" as an index in hospital data: 
 
-# In[41]:
+# In[ ]:
 
 
 hndDf = data_hospNouveau.copy()
@@ -690,7 +697,7 @@ hndDf.set_index("dep");
 
 # Then we extract the demographic information and set index "dep" 
 
-# In[42]:
+# In[ ]:
 
 
 depStats = inseeDep.iloc[:,[2,3,7,8]].copy()
@@ -702,7 +709,7 @@ depStats.set_index("dep");
 
 # Now we perform the merge, and group by date and 'départements': 
 
-# In[43]:
+# In[ ]:
 
 
 hndMerged = PAN.merge(hndDf,depStats, on="dep" ) 
@@ -711,7 +718,7 @@ hndGrMerged=hndMerged.groupby(["jour","dep"]).sum()
 
 # For now, look at daily statistics normalized by concerned population (unit= event per million people)
 
-# In[44]:
+# In[ ]:
 
 
 hndGMJour = hndGrMerged.groupby("jour").sum()
@@ -722,7 +729,7 @@ for lab in colLabs:
 
 # And the graph can be readily generated:
 
-# In[45]:
+# In[ ]:
 
 
 ncolLabs = list ( x+"_rate" for x in colLabs)
@@ -748,13 +755,13 @@ ImgMgr.save_fig("FIG008")
 
 # Now we can do the same exercise keeping the 'département' information around:
 
-# In[46]:
+# In[ ]:
 
 
 hndGMDepJour = hndGrMerged.iloc[:,[0,1,2,3,5]].copy()
 
 
-# In[47]:
+# In[ ]:
 
 
 colLabs = ("incid_hosp", "incid_rea", "incid_dc", "incid_rad")
@@ -762,7 +769,7 @@ for lab in colLabs:
     hndGMDepJour[lab+"_rate"] = hndGMDepJour[lab]/hndGMDepJour["Population totale"]*1.0e6
 
 
-# In[48]:
+# In[ ]:
 
 
 hGMDJExtract = hndGMDepJour.iloc[:,range(5,9)]
@@ -773,7 +780,7 @@ hGMDJExtract = hndGMDepJour.iloc[:,range(5,9)]
 
 # This is simply an effort to get 'departement's by name rather than by number (you were supposed to learn the mapping in school... that was a long time ago... )
 
-# In[49]:
+# In[ ]:
 
 
 inseeDepLib=inseeDep.iloc[:,[2,3]]
@@ -782,7 +789,7 @@ cl[0]="dep"
 inseeDepLib.columns=cl
 
 
-# In[50]:
+# In[ ]:
 
 
 colLabs = ("incid_hosp", "incid_rea", "incid_dc", "incid_rad")
@@ -792,7 +799,7 @@ for lab in colLabs:
 
 # Here we show the heat map for the most active days in the various 'départements', where activity is measured in events per million population.
 
-# In[51]:
+# In[ ]:
 
 
 cols=list(hndMerged.columns)
@@ -826,7 +833,7 @@ for icase in range(9,13):
   ImgMgr.save_fig(f"FIG{i:03}")
 
 
-# In[52]:
+# In[ ]:
 
 
 i = 0
@@ -860,19 +867,19 @@ for lwhat in rowsSel:
 
 # ### Another look at departmental data
 
-# In[53]:
+# In[ ]:
 
 
 hndMerged.info()
 
 
-# In[54]:
+# In[ ]:
 
 
 hndMerged.iloc[:4,:]
 
 
-# In[55]:
+# In[ ]:
 
 
 hndMerged["date"] = PAN.to_datetime(hndMerged.loc[:,"jour"], format="%Y/%m/%d")
@@ -884,7 +891,7 @@ print(f"Our statistics span {dateSpan.days+1} days, start: {dateStart} and end {
 hndMerged["elapsedDays"] = (hndMerged["date"] - dateStart).dt.days
 
 
-# In[56]:
+# In[ ]:
 
 
 dtx = hndMerged[ hndMerged["Population totale"] > 1.0e6 ]
@@ -892,7 +899,7 @@ dtg = dtx.groupby("dep")
 subnodeSpec=(lambda i,j:{"nrows":i,"ncols":j})(*subPlotShape(len(dtg),maxCol=4, colFirst=False))
 
 
-# In[57]:
+# In[ ]:
 
 
 painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,20))
@@ -916,7 +923,7 @@ for (departement,dfExtractOrig) in dtg :
 ImgMgr.save_fig("FIG050")  
 
 
-# In[58]:
+# In[ ]:
 
 
 painter = figureFromFrame(None, subplots=subnodeSpec, figsize=(15,20))
