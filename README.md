@@ -11,11 +11,13 @@
  in [README-Data.md](./README-Data.md).
  
  Jupyter notebooks included work with COVID-19 / SARS-cov-19
- data provided by Santé publique France and INSEE,  which include:
-- https://www.data.gouv.fr/fr/datasets/donnees-hospitalieres-relatives-a-lepidemie-de-covid-19/
-- https://www.data.gouv.fr/en/datasets/donnees-des-urgences-hospitalieres-et-de-sos-medecins-relatives-a-lepidemie-de-covid-19/
-
-
+ data provided by :
+ - Santé publique France and INSEE,  which include:
+   - https://www.data.gouv.fr/fr/datasets/donnees-hospitalieres-relatives-a-lepidemie-de-covid-19/
+   - https://www.data.gouv.fr/en/datasets/donnees-des-urgences-hospitalieres-et-de-sos-medecins-relatives-a-lepidemie-de-covid-19/
+ - EU Open Data Portal
+ - Data for USA from https://covidtracking.com
+ 
 Mostly this consists of
 - jupyter notebook(s),
 - python scripts, almost direct transpositions of the notebooks. 
@@ -74,9 +76,13 @@ See [README-gallery.md](./README-gallery.md) for more.
   
 ## install requirement
 ### Python
-- This requires Python 3, and has been tested with Python 3.8.2, on a Linux
-Ubuntu 20.04 LTS system. (Note: an earlier version worked with Python 3.6.5 on
-Ubuntu 18.04 LTS.)
+- This requires Python 3, and has been tested on: 
+
+<TABLE>
+<TR><TD>Python 3.6.5 </TD><TD>Ubuntu 18.04 LTS</TD><TD>before 3Q2020</TD></TR>
+<TR><TD>Python 3.8.2 </TD><TD>Ubuntu 20.04 LT</TD><TD>before 1Q2021</TD> </TR>
+<TR><TD>Python 3.8.6 </TD><TD>Ubuntu 20.10</TD><TD>Current</TD> </TR>
+</TABLE>
 
 - In the current version, the library is dependent on
 some features from the IPython package, which comes with Jupyter. This constraint

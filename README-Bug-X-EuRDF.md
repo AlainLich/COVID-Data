@@ -1,4 +1,7 @@
-# Resolution of EU Site related bug
+# Resolution of EU Site SPARQL related bug
+
+This was found around early April 2021, it may have occurred a few days
+before. This notice is kept for documentation purposes.
 
 ## Error message
 
