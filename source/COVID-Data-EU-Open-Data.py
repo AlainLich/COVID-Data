@@ -263,10 +263,11 @@ def prepareDataPerCountry(df, continent=None, minPop=None, maxPop=None):
 # In[ ]:
 
 
-dtg = prepareDataPerCountry(data_covidDataEU, continent="Asia")
+dtg = prepareDataPerCountry( data_covidDataEU,  continent="Asia")
 myEUConverter = EUSiteData()
 argDict = { "breakCond" : lambda count, country : count > 45,
-            "countryDataAdapter" :myEUConverter }
+            "countryDataAdapter" :myEUConverter ,
+            "dateStart" : dateStart}
 
 myFig =  perCountryFigure(**argDict )
 
@@ -285,7 +286,8 @@ myFig.mkImage( dtg, plotCols)
 dtg = prepareDataPerCountry(data_covidDataEU, continent="Europe", minPop=2e7)
 myEUConverter = EUSiteData()
 argDict = { "breakCond" : lambda count, country : count > 12, 
-            "countryDataAdapter":myEUConverter}
+            "countryDataAdapter":myEUConverter,
+             "dateStart" : dateStart,}
 myFig =  perCountryFigure(**argDict )
 
 plotCols = ( "cases", "deaths")
@@ -301,7 +303,8 @@ ImgMgr.save_fig("FIG001")
 dtg = prepareDataPerCountry(data_covidDataEU, continent="Europe", minPop=2e7)
 myEUConverter = EUSiteData()
 argDict = { "breakCond" : lambda count, country : count > 12, 
-            "countryDataAdapter":myEUConverter}
+            "countryDataAdapter":myEUConverter,
+            "dateStart" : dateStart}
 myFig =  perCountryFigure(**argDict )
 
 plotCols = ( "deaths",)
@@ -317,7 +320,8 @@ ImgMgr.save_fig("FIG002")
 dtg = prepareDataPerCountry(data_covidDataEU, continent="Europe", minPop=2e7)
 myEUConverter = EUSiteData()
 argDict = { "breakCond" : lambda count, country : count > 12, 
-            "countryDataAdapter":myEUConverter}
+            "countryDataAdapter":myEUConverter,
+            "dateStart" : dateStart}
 myFig =  perCountryFigure(**argDict )
 
 plotCols = ( "cases", "deathscum")
@@ -333,7 +337,8 @@ ImgMgr.save_fig("FIG003")
 dtg = prepareDataPerCountry(data_covidDataEU, continent="Europe", minPop=2e7)
 myEUConverter = EUSiteData()
 argDict = { "breakCond" : lambda count, country : count > 12, 
-            "countryDataAdapter":myEUConverter}
+            "countryDataAdapter":myEUConverter,
+             "dateStart" : dateStart}
 myFig =  perCountryFigure(**argDict )
 
 plotCols = ( "caserate", "deathscumrate")
@@ -349,7 +354,8 @@ ImgMgr.save_fig("FIG004")
 dtg = prepareDataPerCountry(data_covidDataEU, continent="Europe", minPop=2e7)
 myEUConverter = EUSiteData()
 argDict = { "breakCond" : lambda count, country : count > 12, 
-            "countryDataAdapter":myEUConverter}
+            "countryDataAdapter":myEUConverter,
+             "dateStart" : dateStart}
 myFig =  perCountryFigure(**argDict )
 
 plotCols = ( "deathrate",)
@@ -364,10 +370,11 @@ ImgMgr.save_fig("FIG005")
 # In[ ]:
 
 
-dtg = prepareDataPerCountry(data_covidDataEU, minPop=15e7)
+dtg = prepareDataPerCountry(data_covidDataEU,  minPop=15e7)
 myEUConverter = EUSiteData()
 argDict = { "breakCond" : lambda count, country : count > 15, 
-            "countryDataAdapter":myEUConverter}
+            "countryDataAdapter":myEUConverter,
+            "dateStart" : dateStart}
 myFig =  perCountryFigure(**argDict )
 
 plotCols = ( "cases", "deaths")
@@ -383,7 +390,8 @@ ImgMgr.save_fig("FIG021")
 dtg = prepareDataPerCountry(data_covidDataEU, minPop=15e7)
 myEUConverter = EUSiteData()
 argDict = { "breakCond" : lambda count, country : count > 15, 
-            "countryDataAdapter":myEUConverter}
+            "countryDataAdapter":myEUConverter, 
+            "dateStart" : dateStart}
 myFig =  perCountryFigure(**argDict )
 
 plotCols = ( "deaths",)
@@ -399,7 +407,8 @@ ImgMgr.save_fig("FIG022")
 dtg = prepareDataPerCountry(data_covidDataEU, minPop=15e7)
 myEUConverter = EUSiteData()
 argDict = { "breakCond" : lambda count, country : count > 15, 
-            "countryDataAdapter":myEUConverter}
+            "countryDataAdapter":myEUConverter,
+            "dateStart" : dateStart}
 myFig =  perCountryFigure(**argDict )
 
 plotCols = ( "cases", "deathscum")
@@ -415,7 +424,8 @@ ImgMgr.save_fig("FIG023")
 dtg = prepareDataPerCountry(data_covidDataEU, minPop=15e7)
 myEUConverter = EUSiteData()
 argDict = { "breakCond" : lambda count, country : count > 15, 
-            "countryDataAdapter":myEUConverter}
+            "countryDataAdapter":myEUConverter,
+             "dateStart" : dateStart}
 myFig =  perCountryFigure(**argDict )
 
 plotCols = ( "caserate", "deathscumrate")
@@ -431,7 +441,8 @@ ImgMgr.save_fig("FIG024")
 dtg = prepareDataPerCountry(data_covidDataEU,  minPop=15e7)
 myEUConverter = EUSiteData()
 argDict = { "breakCond" : lambda count, country : count > 15, 
-            "countryDataAdapter":myEUConverter}
+            "countryDataAdapter":myEUConverter,
+            "dateStart" : dateStart}
 myFig =  perCountryFigure(**argDict )
 
 plotCols = ( "deathrate",)
