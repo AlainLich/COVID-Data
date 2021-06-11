@@ -7,6 +7,19 @@
 
 # # Libraries
 
+# This is weird, apparently needed after transitionning to Ubuntu 21.04 Python 3.9.4, 
+# there must be another dir lib competing ... so order has become important??
+
+# In[ ]:
+
+
+import sys,os
+addPath= [os.path.abspath("../source"),
+          os.path.abspath("../venv/lib/python3.9/site-packages/")]
+addPath.extend(sys.path)
+sys.path = addPath
+
+
 # In[ ]:
 
 

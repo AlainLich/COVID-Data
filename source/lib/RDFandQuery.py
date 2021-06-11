@@ -26,6 +26,9 @@ from lxml import etree
 import pyparsing
 
 import lib.RDFNameSpaces as RDFNS
+import libApp.displHtml  as DHTML
+                         # processing of return from HTTP in the form of HTML
+                         #  (occurs on EU Open Data P.)
 
 class WithRDFSerialize(object):
         """ Facilitate the utilization of an RDF database in the form of an RDFLib tree
@@ -112,7 +115,7 @@ class XMLtoRDF(WithRDFSerialize):
                     "resource" : RDFNS.nsTable["X2R"][1].resource,                    
     }
 
-    def parseQueryResult(self, inFileName=None, inString=None):
+    def parseQueryResult(self, inFileName=None, inString=None, metadata=None):
         """
           Inputs/Parses SPARQL Query Results XML Format into an RDFLib tree,
           from a file or a string. Result is made available in 
@@ -133,9 +136,10 @@ class XMLtoRDF(WithRDFSerialize):
 		```
         """
         if self.doDebug :
-               if inFileName:
+                print(f"metadata={metadata}", file=sys.stderr)
+                if inFileName:
                        print(f"retrieving XML data from file {inFileName}")    
-               else:
+                else:
                        if isinstance(inString, str):
                            s = inString
                        else:
@@ -148,14 +152,52 @@ class XMLtoRDF(WithRDFSerialize):
                          fd.write(s)
                          fd.close()
 
-                        
-        parser = etree.XMLParser(ns_clean=True, remove_blank_text=True, remove_comments=True)
-        if inFileName is not None:
-            self.tree = etree.parse(inFileName, parser)
-        elif inString  is not None :
-            self.tree = etree.fromstring(inString, parser)
-        else:
-            raise RuntimeError(f"You must specify either inFileName or inString (got {inFileName} and {inString})")
+        try:
+            parser = etree.XMLParser(ns_clean=True, remove_blank_text=True,
+                                     remove_comments=True)
+    
+            if inFileName is not None:
+                self.tree = etree.parse(inFileName, parser)
+            elif inString  is not None :
+                print(f"About to parse (etree.fromstring)\n{inString}\n")
+                self.tree = etree.fromstring(inString, parser)
+            else:
+                raise RuntimeError(f"You must specify either inFileName or inString (got {inFileName} and {inString})")
+        except Exception as err:
+            print(f"Could not parse as XML/RDF\n\t{err}", file=sys.stderr)
+            if inString is not None:
+                print(f"inString:{type(inString)}:{inString}", file=sys.stderr)
+                if inString.startswith(b"<!DOCTYPE html>"):
+                    print(f"metadata=({type(metadata)}){metadata}", file=sys.stderr)
+                    base = metadata["options"]["HttpHDR"]
+                    ## see if the information is available!!
+                    htmlProcessor= DHTML.DoHtml(instring=inString)
+                    htmlProcessor.xferHtml( outfile=None, setBase=base, doBrowse=True)
+                else:
+                    outFileName = "/tmp/parseErrFile.log"
+                    with open(outFileName, "wb") as out:
+                        out.write(inString)
+                        print(f"String being parsed copied to file:{outFileName}",
+                              file=sys.stderr)
+                    ##----------------------------------------------------------------------
+                    ## Horror story:the EUODP sends back an error indication in the form
+                    ## of a javascript with indirect access to custom files.
+                    ## Here, we:
+                    ##   a)check if HTML
+                    ##   b)stick a     <base href="https://data.europa.eu/euodp/"></base>
+                    ##     right after the <head> tag
+                    ##   c) send the html to firefox and see if the transient diagnostic
+                    ##      becomes readable!!
+                    ##   d) obviously, firefox has to deal with the security issues of
+                    ##      interpreting javascript!
+                    ##----------------------------------------------------------------------
+                    ## RESULT: only get the spinning image, no more details... so not
+                    ##         happy with this!!
+                    ##----------------------------------------------------------------------
+            else:
+                print(f"File:{inFileName} was being parsed", file=sys.stderr)
+            
+            raise err # reraise !!
 
         self.items()
         

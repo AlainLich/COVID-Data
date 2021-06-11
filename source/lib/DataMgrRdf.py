@@ -133,9 +133,18 @@ class manageAndCacheDataFilesRDF(  manageAndCacheDataFiles):
             self.dataQuery.inputSerial(ofn, serFmt="xml")
         else:
             #need to parse to obtain RDF from the XML response
-            xmlParser = RDFQ.XMLtoRDF(optdict)            
-            xmlParser.parseQueryResult(inString=self.data)
-                
+            xmlParser = RDFQ.XMLtoRDF(optdict)
+            try:
+                xmlParser.parseQueryResult(inString=self.data, metadata=self.metadata)
+            except Exception as err:
+                def sfn (v):
+                    if isinstance(v,dict):
+                        return "\n\t".join((f"{k}\t->{v}" for (k,v) in v.items()))
+                    else:
+                        return v
+                mt = "\n".join(( f"{k}:\t{sfn(v)}" for (k,v) in self.metadata.items()))
+                print(f"HTTP Metadata for failed parse:\n{mt}", file=sys.stderr)
+                raise err
             if ofn is not None: 
                    xmlParser.outputSerial(ofn, serFmt="xml")
                    sys.stderr.write(f"Wrote generated rdf (xml) on {ofn}\n")
