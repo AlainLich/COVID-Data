@@ -1,19 +1,23 @@
- IPython
- docopt
- hashlib
- json
- lxml
- matplotlib
- networkx
- numpy
- pandas
- pprint
- rdflib
- requests
- scipy
- seaborn
- sklearn
- unittest
- urllib
- xlrd
+## These are the requirements observed (pip installed ) on 06/11/21
+## Python 3.9.4
+
+IPython
+docopt
+json
+jupyter
+lxml
+matplotlib
+networkx
+numpy
+openpyxl
+pandas
+pprint
+rdflib
+requests
+scipy
+seaborn
+sklearn
+urllib3>=1.26.5
+xlrd
+
  
