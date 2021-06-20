@@ -10,6 +10,16 @@
 # In[ ]:
 
 
+import sys,os
+addPath= [os.path.abspath("../source"),
+          os.path.abspath("../venv/lib/python3.9/site-packages/")]
+addPath.extend(sys.path)
+sys.path = addPath
+
+
+# In[ ]:
+
+
 # Sys import
 import sys, os, re
 # Common imports

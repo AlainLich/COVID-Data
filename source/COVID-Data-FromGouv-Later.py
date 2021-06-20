@@ -530,7 +530,13 @@ colOpts = {'dc_F': {"c":"r","marker":"v"},
            'rea_F': {"c":"r","marker":"o", "linestyle":"--"},  
            'rea_M': {"c":"b","marker":"o", "linestyle":"--"},
            'rad_F': {"marker":"+"},
-           'rad_M': {"marker":"+"}
+           'rad_M': {"marker":"+"},
+           'hosp_M':{},
+           'HospConv_M':{},
+           'SSR_USLD_M' :{},
+           'hosp_F':{},
+           'HospConv_F':{},
+           'SSR_USLD_F' :{},
           }
 painter.doPlotBycol()
 painter.setAttrs(colOpts = colOpts,
@@ -551,7 +557,13 @@ colOpts = {'dc_F': {"c":"r","marker":"v"},
            'rea_F': {"c":"r","marker":"o", "linestyle":"--"},  
            'rea_M': {"c":"b","marker":"o", "linestyle":"--"},
            'rad_F': {"marker":"+"},
-           'rad_M': {"marker":"+"}
+           'rad_M': {"marker":"+"},
+           'hosp_M':{},
+           'HospConv_M':{},
+           'SSR_USLD_M' :{},
+           'hosp_F':{},
+           'HospConv_F':{},
+           'SSR_USLD_F' :{},
           }
 painter.doPlotBycol()
 painter.setAttrs(colOpts = colOpts,
@@ -607,7 +619,13 @@ if len(levAge) != len(ageClasses):
 colOpts = {'dc':  {"c":"b","marker":"v"},  
            'rea': {"c":"r","marker":"o", "linestyle":"--"},  
            'rad':  {"marker":"^"},
-           'hosp': {"marker":"+"}
+           'hosp': {"marker":"+"}, 
+           'hosp_M':{},
+           'HospConv_M':{},
+           'SSR_USLD_M' :{},
+           'hosp_F':{},
+           'HospConv_F':{},
+           'SSR_USLD_F' :{},
           }
 
 
@@ -637,6 +655,34 @@ for i in range(len(levAge)):
 
 display(meta_Hosp[[ "Colonne","Description_EN" ]])
 ImgMgr.save_fig("FIG067")
+
+
+# In[ ]:
+
+
+painter = figureTSFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
+for i in range(len(levAge)):
+    cat = ageClasses[i]
+    if cat < 90:
+        title = f"Age {cat-9}-{cat}"
+    else: 
+        title = "Age 90+"
+        
+    dfExtract = dhRAg.loc(axis=1)[:,cat]
+    # remove the now redundant information labeled 'cl_age90'
+    dfExtract.columns = dfExtract.columns.levels[0]
+    cols = [c for c in dfExtract.columns  if c not in ('rad', 'dc')]
+    painter.doPlotBycol(dfExtract[cols]);
+    painter.setAttrs(colOpts = colOpts,
+                     xlabel  = f"Days since {painter.dt[0]}",
+                     title   = title,
+                     legend  = True    ) 
+    
+    
+    painter.advancePlotIndex()
+
+display(meta_Hosp[[ "Colonne","Description_EN" ]])
+ImgMgr.save_fig("FIG069")
 
 
 # In[ ]:
