@@ -15,7 +15,7 @@
  - Santé publique France and INSEE,  which include:
    - https://www.data.gouv.fr/fr/datasets/donnees-hospitalieres-relatives-a-lepidemie-de-covid-19/
    - https://www.data.gouv.fr/en/datasets/donnees-des-urgences-hospitalieres-et-de-sos-medecins-relatives-a-lepidemie-de-covid-19/
- - EU Open Data Portal **WARNING: This is not working at this time, issue seems to be a change in interface to this data source** 
+ - EU Open Data Portal
  - Data for USA from https://covidtracking.com
  
 Mostly this consists of
@@ -23,6 +23,23 @@ Mostly this consists of
 - python scripts, almost direct transpositions of the notebooks. 
 - a small library 
 
+## TOC
+<!--TOC-->
+
+- [Simple Python analysis tools for COVID-19 / SARS-cov-19 data](#simple-python-analysis-tools-for-covid-19--sars-cov-19-data)
+  - [TOC](#toc)
+  - [Aim:](#aim)
+  - [Gallery](#gallery)
+  - [Functionality](#functionality)
+    - [Bugs and changes](#bugs-and-changes)
+  - [install requirement](#install-requirement)
+    - [Python](#python)
+    - [Jupyter](#jupyter)
+    - [Libraries](#libraries)
+  - [Warning(s)](#warnings)
+  - [References](#references)
+
+<!--TOC-->
 
 
 ## Aim:
@@ -35,7 +52,7 @@ See [README-gallery.md](./README-gallery.md) for more.
 
 <TABLE>
   <TR><TD COLSPAN="1"><CENTER>Comparison between largest 'départements'</CENTER></TD> </TR>
-  <TR><TD COLSPAN="1"><CENTER>From 'data.gouv.fr' (France) </CENTER></TD> </TR>
+  <TR><TD COLSPAN="1"><CENTER>From 'data.gouv.fr'</CENTER></TD> </TR>
   <TR> <TD> <IMG SRC="./JupySessions/images/Chap01/FIG050.jpg"/></TD> </TR>
 </TABLE>    
 
@@ -43,23 +60,6 @@ See [README-gallery.md](./README-gallery.md) for more.
   <TR><TD COLSPAN="1"><CENTER>Comparison between some European countries</CENTER></TD> </TR>
   <TR><TD COLSPAN="1"><CENTER>From 'data.europa.eu'</CENTER></TD> </TR>
   <TR> <TD> <IMG SRC="./JupySessions/images/Chap03/FIG003.jpg"/></TD> </TR>
-</TABLE>    
-
-Below: 
-+ SSR: "service de soins de rehabilitation" (rehabilitation care), 
-+ USLD: "unité de soins de longue durée"    (Long duration care)
-+ rea: ICU 
-
-<TABLE>
-  <TR><TD COLSPAN="1"><CENTER>Comparison between age groups in France</CENTER></TD> </TR>
-  <TR><TD COLSPAN="1"><CENTER>From 'data.gouv.fr'</CENTER></TD> </TR>
-  <TR> <TD> <IMG SRC="./JupySessions/images/Chap01/FIG067.jpg"/></TD> </TR>
-</TABLE>    
-
-<TABLE>
-  <TR><TD COLSPAN="1"><CENTER>Comparison between age groups in France</CENTER></TD> </TR>
-  <TR><TD COLSPAN="1"><CENTER>From 'data.gouv.fr'</CENTER></TD> </TR>
-  <TR> <TD> <IMG SRC="./JupySessions/images/Chap01/FIG069.jpg"/></TD> </TR>
 </TABLE>    
 
 
@@ -101,9 +101,6 @@ Below:
 <TR><TD>Python 3.8.6 </TD><TD>Ubuntu 20.10</TD><TD>Current</TD> </TR>
 </TABLE>
 
-- **Note** at this time (June 2021) the interface to the EU Open Data Portal **does
-  not work!!**
-  
 - In the current version, the library is dependent on
 some features from the IPython package, which comes with Jupyter. This constraint
 may be removed in the future.

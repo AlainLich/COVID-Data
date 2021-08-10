@@ -6,10 +6,12 @@ __license__ = 'MIT License'
 __version__ = '1.1'
 
 import json
-
+import sys
 from lib.DataMgr import *
+from lib.utilities import  listOrSingleIterator
+from collections.abc import Iterable 
 
-
+        
 class manageAndCacheDataFilesJSON(  manageAndCacheDataFiles):
     defaultOpts = {
            'cacheFname'   :  ".cache.json",
@@ -32,19 +34,26 @@ class manageAndCacheDataFilesJSON(  manageAndCacheDataFiles):
         
     def _getRemoteMetaFromServer(self):
           try:
-              if 'HttpRQT' in self.options and  self.options['HttpRQT'] != 'POST': 
+              if 'HttpRQT' in self.options and  self.options['HttpRQT'] != 'POST':
+                  ## Note: this differs from the selection mechanism used in 
+                  ##       manageAndCacheDataFilesFRAPI._getRemoteMetaFromServer
+                  ##       ** May mean a maintenance issue for the user classes
+                  ##       ** Difference found in the process of adapting for fuller
+                  ##       ** support of the API on Data.Gouv.fr.
                   url = "/".join( map (lambda x:self.options[x],('HttpHDR','ApiInq')))
+                  method='GET'
                   resp = requests.get(url=url, params=self.options['InqParmsDir'],
                                       timeout= self.options['httpTimeOut'])
               else:
                   url = "/".join( map (lambda x:self.options[x],
                                        ( x for x in ('HttpHDR','ApiInqHdr','ApiInq')
                                             if x in self.options  )))
+                  method='POST'
                   resp = requests.post(url=url, headers=self.options[ 'ApiHeaders' ], 
                                        params=self.options['InqParmsDir'],
                                        timeout= self.options['httpTimeOut'])
           except Exception as err:
-               print(   f"An unexpected error has occurred during http request\n"
+               print(   f"An unexpected error has occurred during http request ({method})\n"
                       + f"\t{type(err)}\n\t{err}", file = sys.stderr )
               
           cde =resp.status_code
@@ -56,10 +65,11 @@ class manageAndCacheDataFilesJSON(  manageAndCacheDataFiles):
                self.httpErrorMsg(
                    resp, 
                    f"Request to get remote information failed, {fname} may be stale",
+                   "Returned error message",
                    doRaise = False)               
                return
            
-          print(f"URL/request={resp.url}\n\tStatus:{cde}:{cdeTxt}")
+          print(f"URL/request={resp.url}\n\tStatus:{cde}:{cdeTxt}", file=sys.stderr)
 
           self.data = resp.json()
           self.metadata["data:type"] =  "python/json"
@@ -78,25 +88,30 @@ class manageAndCacheDataFilesJSON(  manageAndCacheDataFiles):
           prettyPrinter = pprint.PrettyPrinter(indent=4)
           fileList=[]
           resourceSet = set()
-          
-          for indata in self.data['data']:
-              for resources in indata['resources']:
-                  resourceDict = {}
-                  resourceSet |= set(resources.keys())
-                  resourceDict.update({ x:resources[x]
-                                        for x in  manageAndCacheDataFiles._resourceList})
-                  resourceDict.update({'orgSlug':indata['organization']['slug']})
-                  fileList.append(resourceDict)
-                  resourceSet |=  set(('organization:slug',))
 
-          print(f"There are {len( self.data['data'])} elts/organizations")
-          print(f"      for a total of {len(fileList)} entries")
+          for dataDict in listOrSingleIterator(self.data):
+              for indata in dataDict['data']:
+                  for resources in indata['resources']:
+                      resourceDict = {}
+                      resourceSet |= set(resources.keys())
+                      resourceDict.update({ x:resources[x]
+                                            for x in  manageAndCacheDataFiles._resourceList})
+
+                      org= indata.get('organisation')
+                      if org is not None:
+                          resourceDict.update({'orgSlug':org['slug']})
+                      fileList.append(resourceDict)
+                      resourceSet |=  set(('organization:slug',))
+
+                  print(f"There are {len( dataDict['data'])} elts/organizations")
+                  print(f"      for a total of {len(fileList)} entries")
 
           if bulk:
               print("BULK DATA "+"** "*12 + "BULK DATA")
               print(prettyPrinter.pformat(self.data))
           print("++ "*12)
           print(f"Potential resources : {prettyPrinter.pformat(sorted(resourceSet))}")
+          print("++ "*12 + "File List" + " ++ "*12)
           print(prettyPrinter.pformat(fileList))
           print("++ "*12+"\n")
 
@@ -248,7 +263,134 @@ class manageAndCacheDataFilesFRDG(  manageAndCacheDataFilesJSON):
           self.dataTopLev="data"
           self._pprintDataItem(item=item , showVals=showVals)
 
+class manageAndCacheDataFilesFRAPI(  manageAndCacheDataFilesJSON):
+    """ Manage a local repository extracted from www.data.gouv.fr:
+        - extraction of the  list of files based on criteria conforming to
+          the www.data.gouv.fr API
+        - provided by base class:  caching,  local copies,
+        - add flexibility for exploiting the API
+        For now examples are shown in the test section at end of file (`test_remote`)
+
+        Notes:
+         (1) adds option  'ApiInqQuery', to generate a ?query=value in the HTTP request,
+             if not empty
+         (2) 'ApiInqQuery' : multiple queries if this is a list of dicts
+         (3) 'InqParmsDir' : multiple queries if this is a list of dicts
+         (*) if both are list, product is generated, order unspecified(yet?)
+    """
+    defaultOpts = {'HttpHDR'      : 'https://www.data.gouv.fr/api/1',
+                   'ApiInq'       : 'datasets',
+                   'ApiInqQuery'  : {},
+                   'ApiHeaders'   : {},
+                   'InqParmsDir'  : {"tag":"spf", "page":0, "page_size":30},
+                   'httpTimeOut'  : 20,
+                   'CacheValidity':  12*60*60,  #cache becomes stale after 12 hours
+                   'maxImportSz'  :  5*(2**10)**2,  #5 Mb: max size of individual file load
+                   'maxDirSz'     :  50*(2**10)**2,  #50 Mb: max total cache directory size
+                  }
+
+    def __init__(self, dirpath,**kwdOpts ):
+        """
+         Arguments:
+               - `HttpHDR` : header of http command, see your http API
+               - `ApiInq`  : API argument, we may want to use:
+                           + 'datasets' (query spec: tag,..)
+                           + 'datasets/suggest (query spec:'q='        
+                           + 'tags/suggest' (query spec "q", or X-Fields)
+               - 'ApiHeaders'   :  Extra Headers,
+               - `InqParmsDir` : dict with command API parameters, may become structured..
+               - `maxImportSz` : 5 Mb: max size of individual file load
+               - `maxDirSz`    : 50 Mb: max total cache directory size (.cache file
+                                 storing meta data is not accounted for systematically)
+        """
+        if not hasattr(self, "options"):
+            self.options={}
+        setDefaults(self.options, kwdOpts, manageAndCacheDataFilesFRAPI.defaultOpts)
+        manageAndCacheDataFilesJSON.__init__(self, dirpath=dirpath)
+        # by now, the base class initializer has obtained the local filesys information
+        setDefaults(self.options, kwdOpts, manageAndCacheDataFilesFRAPI.defaultOpts)
+          
+    def _getRemoteMetaFromServer(self):
+        self.data = []
+        for (inq, inqQuery, inqDict) in self._mkRqtParms():
+            print(f"inq={inq},\tinqQuery={inqQuery},\tinqDict={inqDict}", file=sys.stderr)
+            httpRqt = self.options.get('HttpRQT')
+            try:
+                if httpRqt != 'POST':
+                    url = self.options['HttpHDR'] + '/' + inq + '/'
+                    method='GET'
+                    resp = requests.get(url=url,
+                                        params=inqQuery | inqDict,
+                                        timeout= self.options['httpTimeOut'])
+                else:
+                    url = "/".join( map (lambda x:self.options[x],
+                                           ( x for x in ('HttpHDR','ApiInqHdr')
+                                                if x in self.options  )))
+                    url+= '/' + inq + '/'
+                    method='POST'
+                    resp = requests.post(url=url, headers=self.options[ 'ApiHeaders' ], 
+                                         params=inqQuery | inqDict,
+                                         timeout= self.options['httpTimeOut'])
+
+            except Exception as err:
+                print( f"An unexpected error has occurred during http request"
+                       +f"\n\tmethod {method}\thttpRqt=({type(httpRqt)})'{httpRqt}'\n"
+                       + f"\t{type(err)}\n\t{err}", file = sys.stderr )
+
+
+
+            cde =resp.status_code
+            cdeTxt = requests.status_codes._codes[cde][0]
+
+            # will return OK even if thing does not exist
+            if cde >= 400:
+                fname = self.options['cacheFname']
+                self.httpErrorMsg(
+                    resp, 
+                    f"Request to get remote information failed, {fname} may be stale",
+                    f"Returned error message\tmethod '{method}'\thttpRqt=({type(httpRqt)})'{httpRqt}'",
+                    doRaise = False)               
+                return
+
+            print(f"URL/request={resp.url}\n\tStatus:{cde}:{cdeTxt}", file=sys.stderr)
+            # should we have an option to flatten this?
+            self.data.append(resp.json())
+            
+        print(f"Size of collected data:{sys.getsizeof(self.data)}", file=sys.stderr)
+        self.metadata["data:type"] =  "python/json"
+
+    def _mkRqtParms(self):
+        """
+            Prepare a list of requests from the parameters in options 
+                    'ApiInq' ,  'ApiInqQuery', and 'InqParmsDir'
+
+            Returns an interator over triples (APIInq, APIParm, APIInqParmDict) 
+
+             1) _getRemoteMetaFromServer will assemble and execute 1 request per list elt
+	     2)  The result will be assembled/merged (we will see how later)
+	     3) each HTTP request is formed (separators TBD):
+	        HttpHDR (see elsewhere)
+		Expansion of APIInq   
+		Expansion of 'InqParmsDir' 
+           
+
+        """
+        prettyPrinter = pprint.PrettyPrinter(indent=4)
+        print(f"In _mkRqtParms, self.options=\n{prettyPrinter.pformat(self.options)}",
+              file=sys.stderr)
+
+        for aiq in listOrSingleIterator(self.options.get('ApiInqQuery')):
+            for ipd in listOrSingleIterator(self.options.get('InqParmsDir')):
+                yield (self.options.get('ApiInq'), aiq, ipd)
         
+    def pprintDataItem(self, item="description", showVals=True) :
+          """ See documentation in class manageAndCacheDataFilesFRDG
+          """
+          self.dataTopLev="data"
+          #self._pprintDataItem(item=item , showVals=showVals)
+          print("SUPPRESSED CALL pprintDataItem (TBD!!!!)",file=sys.stderr)
+          print("There is an issue with self.data in pprintDataItem",file=sys.stderr)
+          
 class manageAndCacheDataFilesEU(  manageAndCacheDataFilesJSON):
     """ Manage a local repository extracted from www.data.gouv.fr:
         - extraction of the  list of files based on criteria conforming to

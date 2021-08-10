@@ -45,6 +45,9 @@ class  figureFromFrame(object):
     def __init__(self, df, **kwdOpts):
         self._setDf( df, NZOnly = False)
         self.optd={}
+        self.diagnosticsHash={}  #directory for hashing emitted diagnostics to emit once
+                                 #for now see usage in method _doLineAttrs; currently
+                                 #counting, still need to figure out how to use count!
         self.lines = None
         setDefaults(self.optd, kwdOpts, figureFromFrame.defaultOpts)
 
@@ -125,8 +128,14 @@ class  figureFromFrame(object):
                     if  clab in  copDir:
                          PLT.setp(l,  ** copDir[clab])
                     else:
-                        print (f"({type(clab)}){clab} not in {copDir}")
-
+                        diagnHash = hash( (clab, frozenset(copDir.keys())) )
+                        if diagnHash not in self.diagnosticsHash:
+                            print(f"In {type(self)}._doLineAttrs.assignOpt({type(clab)})"
+                                  + f"\n\t{clab} not in {copDir.keys()}", file = sys.stderr)
+                            self.diagnosticsHash[diagnHash]=1
+                        else:
+                            self.diagnosticsHash[diagnHash] += 1
+                            
         cols = self.df.columns
         if self.lines is None:
             pass

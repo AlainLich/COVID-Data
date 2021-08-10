@@ -15,6 +15,7 @@ from itertools import cycle
 import time
 import datetime
 from   enum import Enum, IntFlag
+from collections.abc import Iterable 
 
 # Better formatting functions
 from IPython.display import display, HTML
@@ -94,8 +95,6 @@ def read_csvPandas(fname,clearNaN=False, **kwargs):
         return df.dropna(how="all").dropna(axis=1)
     return df
 
-
-# In[ ]:
 
 
 def read_xlsxPandas(fname,clearNaN=False, **kwargs):
@@ -294,6 +293,61 @@ class rexTupleList(object):
     def __len__(self):
         return len(self.lstRex)
 
+    
+def entryIsIterable(dict,entry):
+    return isIterable(dict.get(entry))
+
+def isIterable(e):
+    """ Variant that excludes None, as well as (byte) strings""" 
+    return ( e is not None
+             and not isinstance(e,(str,bytes))
+             and isinstance(e, Iterable)) 
+
+def isList(e):
+    """ Variant that excludes None, as well as (byte) strings""" 
+    return ( e is not None
+             and not isinstance(e,(str,bytes))
+             and isinstance(e, list)) 
+    
+class listOrSingleIterator:
+    """ return a generator:
+           1) if obj is a real iterable (not a string): return iteratively elts
+           2) if obj is None: stop iteration
+           3) return obj and stop iterating thereafter
+    """
+    # ------------------------------------------------------------
+    # Note: For implementing this within the yield/generator mechanism, see
+    #        http://www.dabeaz.com/finalgenerator/FinalGenerator.pdf
+    #
+    #       Based on my measurements, this is twice as fast as the Old class
+    # ------------------------------------------------------------
+    def __init__(self, obj):
+        self.obj = obj
+        self.isIter = not isinstance(obj, (str, bytes, dict)) and isinstance(obj, Iterable)
+        
+        if self.isIter:
+            def delegate():
+                # Make a generator from the iterable
+                yield from self.obj            
+            self.iterator = delegate()
+        else:
+            self.isNone = self.obj is None
+            
+    def __iter__(self):
+        return self
+     
+    def __next__(self):
+        if self.isIter:
+            return next(self.iterator)
+        elif self.obj is None :
+            pass
+        elif not self.isNone:
+            self.isNone =  True
+            return self.obj
+
+        raise StopIteration()
+
+    
 if __name__ == "__main__":
     import unittest
     import sys

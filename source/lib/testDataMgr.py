@@ -7,6 +7,46 @@ from DataMgrRdf        import *
 from DataMgrJSON       import *
 import lib.RDFandQuery as RDFQ
 
+import re
+
+# ------------------------------------------------------------------------------
+#
+# Note: This has been moved here since I reimplemented with a yield/generator mechanism,
+#       which is faster
+#
+# ------------------------------------------------------------------------------
+
+class listOrSingleIteratorOld:
+    """ return a generator:
+           1) if obj is a real iterable (not a string): return iteratively elts
+           2) if obj is None: stop iteration
+           3) return obj and stop iterating thereafter
+    """
+    def __init__(self, obj):
+        self.obj = obj
+        self.isNone = self.obj is None
+        self.isIter = not isinstance(obj, (str, bytes, dict)) and isinstance(obj, Iterable)
+        self.index = 0
+        
+    def __iter__(self):
+        return self
+     
+    def __next__(self):
+        if self.isNone :
+            raise StopIteration()
+        elif not self.isIter:
+            self.isNone =  True
+            return self.obj
+        else:
+            self.index+=1
+            if self.index <= len(self.obj):
+                return self.obj[self.index-1]
+
+        raise StopIteration()
+    
+# ------------------------------------------------------------------------------
+
+
 if __name__ == "__main__":
     import unittest
     import sys
@@ -92,6 +132,270 @@ if __name__ == "__main__":
             dataFileVMgr.getRemoteInfo( localOnly = True)
             dataFileVMgr.pprintDataResources( bulk = True)
 
+
+    class DGTestFRAPI(unittest.TestCase):
+        """ Series of test concerning FRAPI (more API for the French site)
+        """        
+        siteOpts= {"maxDirSz": 100*(2**10)**2}
+
+#       Probably not interesting
+#       'GET' 'https://www.data.gouv.fr/api/1/datasets/badges/&size=10'
+
+
+#        # returns list of tags, with score= count, may want to use for further
+#        # enquiry
+#       'GET' 'https://www.data.gouv.fr/api/1/tags/suggest/?q=covid&size=8' 
+
+
+        
+        def test_rqtbuilder0(self):
+            """ Test for generating HTTP request
+                'GET' 'https://www.data.gouv.fr/api/1/datasets/?tag=spf&page=0&page_size=20'
+
+                This tests the defaults in defaultOpts
+            """
+            specOpts={}
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts)
+            testGenTarget="'GET' 'https://www.data.gouv.fr/api/1/datasets/?tag=spf&page=0&page_size=20'"
+            print(f"\n\nExpected genHTTP Target={testGenTarget}", file=sys.stderr)
+            dataFileVMgr.getRemoteInfo()
+
+        def test_rqtbuilder1(self):
+            """ Test for generating HTTP request
+                'GET' 'https://www.data.gouv.fr/api/1/datasets/?tag=spf&page=0&page_size=20'
+
+                This substitutes almost indentical values to the defaults in defaultOpts
+            """
+            specOpts={'ApiInq'       : 'datasets',
+                      'InqParmsDir'  : {"tag":"spf"},
+                      'cacheFname': '.cache.rqtTest1.json'}
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts)
+            testGenTarget="'GET' 'https://www.data.gouv.fr/api/1/datasets/?tag=spf&page=0&page_size=20'"
+            print(f"\n\nExpected genHTTP Target={testGenTarget}", file=sys.stderr)
+            dataFileVMgr.getRemoteInfo()
+
+        def test_rqt1analyze(self):
+            """ Test analyzing cached metadata from  test_rqtbuilder1(
+
+            """
+            specOpts={ 'cacheFname': '.cache.rqtTest1.json',
+                       "dumpMetaFile" : "rqtTest1.meta.dump",
+                       "dumpMetaInfoFile" : "rqtTest1.metainfo.dump"
+                      }
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts )
+            dataFileVMgr.getRemoteInfo(localOnly = True)
+            
+
+        def test_rqtbuilder2(self):
+            """ Test for generating HTTP request
+                'GET' 'https://www.data.gouv.fr/api/1/datasets/?tag=covid&page=0&page_size=20' 
+                 'GET' 'https://www.data.gouv.fr/api/1/datasets/?tag=covid19&page=0&page_size=20' 
+
+                 Note the syntax in specOpts['InqParmsDir'], introducing a list
+            """
+            tagset1 = ({"tag":"covid"}, {"tag":"covid19"})
+            # larger tagset from test4: does not uncover more 'sursaud' datasets
+            tagset2 = (
+                {'tag' : 'covid'},
+                {'tag' : 'covid-19'},
+                {'tag' : 'covid19'},
+                {'tag' : 'covid19france'},
+                {'tag' : 'covid2019'},
+                {'tag' : 'covid-en-france'},
+                {'tag' : 'covidep'},
+                {'tag' : 'covidfrance'},
+                {'tag' : 'covidom'},
+                {'tag' : 'covidreport'},
+                {'tag' : 'covid-tracker'},
+                {'tag' : 'covidtracker'},
+                {'tag' : 'covidtracker-fr'},
+                {'tag' : 'covid-trocqueur'}
+                     )
+            specOpts={'ApiInq'       : 'datasets',
+                      'ApiInqQuery'  : tagset1,
+                      'InqParmsDir'  : {},
+                      'cacheFname': '.cache.rqtTest2.json'}
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts)
+            testGenTarget= "\n\t".join((
+                "'GET' 'https://www.data.gouv.fr/api/1/datasets/?tag=covid&page=0&page_size=20'", 
+                "'GET' 'https://www.data.gouv.fr/api/1/datasets/?tag=covid19&page=0&page_size=20'"            ))
+            print(f"\n\nExpected genHTTP Target=\n\t{testGenTarget}", file=sys.stderr)
+            dataFileVMgr.getRemoteInfo()
+
+        def test_rqt2analyze(self):
+            """ Test analyzing cached metadata from  test_rqtbuilder2(
+
+            """
+            specOpts={ 'cacheFname': '.cache.rqtTest2.json',
+                       "dumpMetaFile" : "rqtTest2.meta.dump",
+                       "dumpMetaInfoFile" : "rqtTest2.metainfo.dump"
+                      }
+            rex = re.compile('(.*sursaud|^donnees-hospitalieres).*')
+            def uselFn(urqt):
+                return rex.match(urqt.fname) or rex.match(urqt.url)
+
+            
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts )
+            dataFileVMgr.getRemoteInfo(localOnly = True)
+            #dataFileVMgr.pprintDataResources(bulk=True)
+            dataFileVMgr.updatePrepare()            
+            dataFileVMgr.updateSelect(displayCount=100 ,  URqtSelector = uselFn)
+            
+            l = '\n\t'.join( x.fname for x in dataFileVMgr.updtList)
+            print(f"Selection: fnames:\n{l}", file=sys.stderr)
+            l = '\n\t'.join( x.url for x in dataFileVMgr.updtList)
+            print(f"Selection: urls:\n{l}", file=sys.stderr)
+
+            dataFileVMgr.printUpdtList('fname') 
+            dataFileVMgr.printUpdtList('url') 
+            
+        def test_rqt2loadit(self):
+            """ Test loading into cache from selected information from Data.Gouv.fr
+
+            """
+            specOpts={ 'cacheFname': '.cache.rqtTest2.json',
+                       "dumpMetaFile" : "rqtTest2.meta.dump",
+                       "dumpMetaInfoFile" : "rqtTest2.metainfo.dump"
+                      }
+            rex = re.compile('.*sursaud.*')
+            def uselFn(urqt):
+                return rex.match(urqt.fname) or rex.match(urqt.url)
+
+            
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts )
+            dataFileVMgr.getRemoteInfo(localOnly = True)
+            #dataFileVMgr.pprintDataResources(bulk=True)
+            dataFileVMgr.updatePrepare()            
+            dataFileVMgr.updateSelect(displayCount=10 ,  URqtSelector = uselFn)
+            dataFileVMgr.cacheUpdate()
+            
+        def test_rqtbuilder3(self):
+            """ Test for generating HTTP request
+                # check, suggest may perform keyword completion
+                  'GET' 'https://www.data.gouv.fr/api/1/datasets/suggest/?q=covid&size=10'
+
+
+            """
+            specOpts={'ApiInq'       : 'datasets/suggest',
+                      'ApiInqQuery'  : {'q':'covid'},
+                      'InqParmsDir'  : {"size":200},
+                      'cacheFname': '.cache.rqtTest3.json'}
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts)
+            testGenTarget="'GET' 'https://www.data.gouv.fr/api/1/datasets/suggest/?q=covid&size=10'"
+            print(f"\n\nExpected genHTTP Target={testGenTarget}", file=sys.stderr)
+            dataFileVMgr.getRemoteInfo()
+
+        def test_rqt3analyze(self):
+            """ Test analyzing cached metadata from  test_rqtbuilder3(
+
+            """
+            specOpts={ 'cacheFname': '.cache.rqtTest3.json',
+                       "dumpMetaFile" : "rqtTest3.meta.dump",
+                       "dumpMetaInfoFile" : "rqtTest3.metainfo.dump"
+                      }
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts )
+            dataFileVMgr.getRemoteInfo(localOnly = True)
+
+            
+        def test_rqtbuilder4(self):
+            """ Test for generating HTTP request
+                returns list of tags, with score= count, may want to use for further
+                enquiry
+                'GET' 'https://www.data.gouv.fr/api/1/tags/suggest/?q=covid&size=8' 
+            """
+            specOpts={'ApiInq'       : 'tags/suggest',
+                      'ApiInqQuery'  : {'q':'covid'},
+                      'InqParmsDir'  : {"size":'40'},
+                      'cacheFname': '.cache.rqtTest4.json'}
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts )
+            testGenTarget="'GET' 'https://www.data.gouv.fr/api/1/tags/suggest/?q=covid&size=8'"
+            print(f"\n\nExpected genHTTP Target={testGenTarget}", file=sys.stderr)
+            dataFileVMgr.getRemoteInfo()
+
+        def test_rqt4analyze(self):
+            """ Test analyzing cached metadata from  test_rqtbuilder4(
+
+            """
+            specOpts={ 'cacheFname': '.cache.rqtTest4.json',
+                       "dumpMetaFile" : "rqtTest4.meta.dump",
+                       "dumpMetaInfoFile" : "rqtTest4.metainfo.dump"
+                      }
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts )
+            dataFileVMgr.getRemoteInfo(localOnly = True)
+
+        def test_rqtbuilder5(self):
+            """ Test for generating HTTP request
+                returns list of tags, with score= count, may want to use for further
+                enquiry
+                'GET' 'https://www.data.gouv.fr/api/1/tags/suggest/?q=covid&size=8' 
+            """
+            specOpts={'ApiInq'       : 'tags/suggest',
+                      'ApiInqQuery'  : {'q':'covid'},
+                      'InqParmsDir'  : ({"size":'8'},{"size":'14'}),
+                      'cacheFname': '.cache.rqtTest5.json' }
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts )
+            testGenTarget= "\n\t".join(("'GET' 'https://www.data.gouv.fr/api/1/tags/suggest/?q=covid&size=8'",
+                            "'GET' 'https://www.data.gouv.fr/api/1/tags/suggest/?q=covid&size=12'"))
+            print(f"\n\nExpected genHTTP Target=\n\t{testGenTarget}", file=sys.stderr)
+            dataFileVMgr.getRemoteInfo()
+
+
+        def test_rqt5analyze(self):
+            """ Test analyzing cached metadata from  test_rqtbuilder5(
+
+            """
+            specOpts={ 'cacheFname': '.cache.rqtTest5.json',
+                       "dumpMetaFile" : "rqtTest5.meta.dump",
+                       "dumpMetaInfoFile" : "rqtTest5.metainfo.dump"
+                      }
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts )
+            dataFileVMgr.getRemoteInfo(localOnly = True)
+
+            
+        def test_rqtbuilder6(self):
+            """ Test for generating HTTP request
+                returns list of tags, with score= count, may want to use for further
+                enquiry
+                'GET' 'https://www.data.gouv.fr/api/1/tags/suggest/?q=covid&size=8' 
+            """
+            specOpts={'ApiInq'       : 'tags/suggest',
+                      'ApiInqQuery'  : ({'q':'covid'},{'q':'covid19'}),
+                      'InqParmsDir'  : ({"size":'8'},{"size":'20'}),
+                      'cacheFname': '.cache.rqtTest6.json'}
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts )
+            testGenTarget= "\n\t".join(("'GET' 'https://www.data.gouv.fr/api/1/tags/suggest/?q=covid&size=8'",
+                            "'GET' 'https://www.data.gouv.fr/api/1/tags/suggest/?q=covid&size=12'",
+                            "'GET' 'https://www.data.gouv.fr/api/1/tags/suggest/?q=covid19&size=8'",
+                            "'GET' 'https://www.data.gouv.fr/api/1/tags/suggest/?q=covid19&size=12'"))
+            print(f"\n\nExpected genHTTP Target=\n\t{testGenTarget}", file=sys.stderr)
+            dataFileVMgr.getRemoteInfo()
+            
+        def test_rqt6analyze(self):
+            """ Test analyzing cached metadata from  test_rqtbuilder6(
+
+            """
+            specOpts={ 'cacheFname': '.cache.rqtTest6.json',
+                       "dumpMetaFile" : "rqtTest6.meta.dump",
+                       "dumpMetaInfoFile" : "rqtTest6.metainfo.dump"
+                      }
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts )
+            dataFileVMgr.getRemoteInfo(localOnly = True)
+            
+            
     class DGTestEU(unittest.TestCase):
         """ First series of test concerns Covid data on European Data portal
         """
@@ -452,7 +756,57 @@ if __name__ == "__main__":
           def test_2(self):
                comp = checkDefaultCompat( manageAndCacheDataFiles)
                #self.assertEqual( comp , True) # test disabled for now, messages informative
-               
+
+    class DGTestYield(unittest.TestCase):
+          def test1(self):
+              for el in listOrSingleIterator((1,2,3)):
+                  print(f"Iterating with returned el={el}", file = sys.stderr)
+          def test1Old(self):
+              for el in listOrSingleIteratorOld((1,2,3)):
+                  print(f"Iterating with returned el={el}", file = sys.stderr)
+          def test2(self):
+              for el in listOrSingleIterator(range(0,11,2)):
+                  print(f"Iterating with returned el={el}", file = sys.stderr)
+          def test2Old(self):
+              for el in listOrSingleIteratorOld(range(0,11,2)):
+                  print(f"Iterating with returned el={el}", file = sys.stderr)
+          def test3(self):
+              sum=0.0
+              n=1100000
+              for el in listOrSingleIterator(range(0,n)):
+                  sum+=el
+              print(f"test3: sum={sum}", file= sys.stderr)
+              assert(sum==n*(n-1)/2)
+          def test3Old(self):
+              sum=0.0
+              n=1100000
+              for el in listOrSingleIteratorOld(range(0,n)):
+                  sum+=el
+              print(f"test3Old: sum={sum}", file= sys.stderr)
+              assert(sum==n*(n-1)/2)
+          def test3b(self):
+              sum=0.0
+              n=10
+              for el in listOrSingleIterator(range(0,n)):
+                  sum+=el
+              print(f"test3: sum={sum}", file= sys.stderr)
+              assert(sum==n*(n-1)/2)
+
+          def test4(self):
+              for el in listOrSingleIterator("tyty"):
+                  print(f"Iterating with returned el={el}", file = sys.stderr)
+                  
+          def test5(self):
+              for el in listOrSingleIterator([f"tyty{e}" for e in range(10)]):
+                  print(f"Iterating with returned el={el}", file = sys.stderr)
+
+          def test6(self):
+              for el in listOrSingleIterator((f"tyty{e}" for e in range(10))):
+                  print(f"Iterating with returned el={el}", file = sys.stderr)                  
+          def test7(self):
+              for el in listOrSingleIterator({f"tyty{e}":e for e in range(10)}):
+                  print(f"Iterating with returned el={el}", file = sys.stderr)              
+                  
     unittest.main()
     """ To run specific test use unittest cmd line syntax, eg.:
            python3 ../source/lib/testDataMgr.py   DGTest.test_pprint

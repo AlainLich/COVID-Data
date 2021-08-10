@@ -128,9 +128,42 @@ ImgMgr = ImageMgr(chapdir="Chap01")
 # In[ ]:
 
 
-dataFileVMgr = manageAndCacheDataFilesFRDG("../data", maxDirSz= 180*(2**10)**2)
+tagset1 = ({"tag":"covid"}, {"tag":"covid19"})
+
+
+# In[ ]:
+
+
+specOpts={ 'cacheFname': '.cache.rqtTest2.json',
+           "dumpMetaFile" : "rqtTest2.meta.dump",
+           "dumpMetaInfoFile" : "rqtTest2.metainfo.dump",
+           'ApiInq'       : 'datasets',
+           'ApiInqQuery'  : tagset1,
+           'InqParmsDir'  : {},
+          }
+
+
+# In[ ]:
+
+
+rex = re.compile('(.*sursaud|^donnees-hospitalieres|^covid-hospit-incid|^sp-pos-).*')
+def uselFn(urqt):
+                return rex.match(urqt.fname) or rex.match(urqt.url)
+
+
+# In[ ]:
+
+
+dataFileVMgr = manageAndCacheDataFilesFRAPI("../data", maxDirSz= 170*(2**10)**2,
+                                            **specOpts)
+
+
+# In[ ]:
+
+
 dataFileVMgr.getRemoteInfo()
-dataFileVMgr.updatePrepare()
+dataFileVMgr.updatePrepare()            
+dataFileVMgr.updateSelect(displayCount=10 ,  URqtSelector = uselFn)
 dataFileVMgr.cacheUpdate()
 
 
@@ -164,9 +197,8 @@ hospAgeCsv     = last("donnees-hospitalieres-classe-age-covid19-2020-04-11-19h00
 hospNouveauCsv = last("donnees-hospitalieres-nouveaux-covid19-2020-04-11-19h00.csv")
 hospCsv        = last("donnees-hospitalieres-covid19-2020-04-11-19h00.csv")
 hospEtablCsv   = last("donnees-hospitalieres-etablissements-covid19-2020-04-12-19h00.csv")
-weeklyLabCsv   = last("donnees-tests-covid19-labo-hebdomadaire-2020-04-16-10h47.csv")
-dailyLabCsv    = last("donnees-tests-covid19-labo-quotidien-2020-04-17-19h00.csv")
-
+weeklyLabCsv   = last("sp-pos-heb-fra-2021-08-09-19h06.csv")
+dailyLabCsv    = last("sp-pos-quot-fra-2021-08-09-19h06.csv")
 
 S1 = set (dataFileVMgr.listMostRecent())
 S2 =set((dailyDepCsv,dailyRegionCsv,dailyFranceCsv, dailyXlsx, weeklyCsv, 
@@ -592,20 +624,55 @@ ImgMgr.save_fig("FIG005")
 todayStr = datetime.date.today().isoformat()    # handle a data error that appeared on 5/5/2020
 
 
+# Modif. August 2021: 
+# - we do not have the comfort of cat 0 summing all ages anymore
+# - may be it would be better to divide per population.. this would give a different figure
+# - should we rename columns with the old labels?
+
 # In[ ]:
 
 
 msk=d=data_dailyLab.loc[:,"jour"]<=todayStr      #there is an error in the version of the data distrib 05/05/2020
 dl=data_dailyLab.loc[msk,:]
-dlGr = dl.loc[dl["clage_covid"]=="0"].groupby('jour').sum()
+dlGrA = dl.groupby('jour').sum()  
+#dlGr["cl_age90"]=0     # 
+dlGr = dlGrA.drop(columns=["cl_age90", "pop"])
+
+
+# In[ ]:
+
+
+dlGr.columns
+
+
+# In[ ]:
+
+
+def LaboRelabCols(tble):
+    corresp={
+        'P_f' : 'Pos_f', 'P_h': 'Pos_h', 'P':'Positive', 
+        'T_f':'Tested_f', 'T_h':'Tested_h', 'T':'Tested'
+    }
+    rc = [corresp.get(x) for x in tble.columns]
+    tble.columns=rc
+
+
+# In[ ]:
+
+
+LaboRelabCols(dlGr)
+
+
+# In[ ]:
+
 
 painter = figureTSFromFrame(dlGr)
-colOpts = {'nb_test': {"c":"b", "marker":"*"},  
-           'nb_pos':  {"c":"r", "marker":"+"},
-           'nb_test_h': {"c":"b","marker":"o", "linestyle":"--"},  
-           'nb_test_f': {"c":"g","marker":"o", "linestyle":"--"},
-           'nb_pos_h': {"c":"b", "marker":"+"},
-           'nb_pos_f': {"c":"g", "marker":"+"}
+colOpts = {'Tested': {"c":"b", "marker":"*"},  
+           'Positive':  {"c":"r", "marker":"+"},
+           'Tested_h': {"c":"b","marker":"o", "linestyle":"--"},  
+           'Tested_f': {"c":"g","marker":"o", "linestyle":"--"},
+           'Pos_h': {"c":"b", "marker":"+"},
+           'Pos_f': {"c":"g", "marker":"+"}
           }
 painter.doPlotBycol()
 painter.setAttrs(colOpts = colOpts,
@@ -614,12 +681,6 @@ painter.setAttrs(colOpts = colOpts,
                legend=True    ) 
 
 ImgMgr.save_fig("FIG006")
-
-
-# In[ ]:
-
-
-dlGr.describe()
 
 
 # Analyze laboratory data according to age
@@ -634,8 +695,25 @@ dataDLab = data_dailyLab.loc[msk,:].copy()
 # In[ ]:
 
 
-dataDLab=dataDLab.set_index(["dep","jour",'clage_covid'])
-dhRA = dataDLab[ dataDLab.index.get_level_values(2)!='0' ].unstack('clage_covid')
+dataDLab
+
+
+# In[ ]:
+
+
+dhRA
+
+
+# In[ ]:
+
+
+dataDLab=dataDLab.set_index(["jour",'cl_age90'])
+
+
+# In[ ]:
+
+
+dhRA = dataDLab.drop(columns=["pop"]).unstack('cl_age90')
 dhRAg = dhRA.groupby("jour").sum()
 
 
@@ -647,22 +725,25 @@ print(f"age classes = {ageClasses}")
 
 levCat = sorted(set(dhRA.columns.get_level_values(0)))
 levAge = sorted(set(dhRA.columns.get_level_values(1)))
+
 subnodeSpec=(lambda i,j:{"nrows":i,"ncols":j})(*subPlotShape(len(levAge),maxCol=6))
 
 print(f"nb age classes:{len(levAge)}\tsubnodeSpec:{subnodeSpec}")
 if len(levAge) != len(ageClasses):
     raise RuntimeError("Inconsistent values for number of age classes")
 
+ageLabs=['All']+[f"{x-9}-{x}" for x in ageClasses[1:-1]]+["90+"]
+
 
 # In[ ]:
 
 
-colOpts = {'nb_test': {"c":"b", "marker":"*"},  
-           'nb_pos':  {"c":"r", "marker":"+"},
-           'nb_test_h': {"c":"b","marker":"o", "linestyle":"--"},  
-           'nb_test_f': {"c":"g","marker":"o", "linestyle":"--"},
-           'nb_pos_h': {"c":"b", "marker":"+"},
-           'nb_pos_f': {"c":"g", "marker":"+"}
+colOpts = {'Tested': {"c":"b", "marker":"*"},  
+           'Positive':  {"c":"r", "marker":"+"},
+           'Tested_h': {"c":"b","marker":"o", "linestyle":"--"},  
+           'Tested_f': {"c":"g","marker":"o", "linestyle":"--"},
+           'Pos_h': {"c":"b", "marker":"+"},
+           'Pos_f': {"c":"g", "marker":"+"}
           }
 
 
@@ -670,15 +751,18 @@ colOpts = {'nb_test': {"c":"b", "marker":"*"},
 
 
 painter = figureTSFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
-for i in 'ABCDE':
-    cat = meta_Ages.loc[meta_Ages.iloc[:,0]==i].iloc[:,1].values[0]
+for i in range(len(ageClasses)):
+    cat = ageLabs[i]
+    ageSpec = ageClasses[i]
     title = f"Labo Tests\nAge: {cat}"
 
-    dfExtract = dhRAg.loc(axis=1)[:,i]
-    # remove the now redundant information labeled 'cl_age90'
-    dfExtract.columns = dfExtract.columns.levels[0]
-    painter.doPlotBycol(dfExtract);
+    dfExtract = dhRAg.loc(axis=1)[:,ageSpec]
+    # remove the not needed information since we selected by ageSpec
+    dfExtract.columns = [col[0] for col in dfExtract.columns]
     
+    LaboRelabCols(dfExtract)
+    
+    painter.doPlotBycol(dfExtract);
     painter.setAttrs(colOpts = colOpts,
                      xlabel  = f"Days since {painter.dt[0]}",
                      title   = title,
@@ -687,7 +771,6 @@ for i in 'ABCDE':
     
     painter.advancePlotIndex()
 
-display(meta_Ages)
 ImgMgr.save_fig("FIG007")
 
 

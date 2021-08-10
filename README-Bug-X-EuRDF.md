@@ -3,6 +3,19 @@
 This was found around early April 2021, it may have occurred a few days
 before. This notice is kept for documentation purposes.
 
+## TOC
+<!--TOC-->
+
+- [Resolution of EU Site SPARQL related bug](#resolution-of-eu-site-sparql-related-bug)
+  - [TOC](#toc)
+  - [Error message](#error-message)
+    - [Information from data.europa.eu](#information-from-dataeuropaeu)
+  - [Response:](#response)
+  - [Keep in mind (for the developper)](#keep-in-mind-for-the-developper)
+  - [TBD](#tbd)
+
+<!--TOC-->
+
 ## Error message
 
 ~~~

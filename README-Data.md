@@ -6,6 +6,17 @@ this page enables to:
   1. keep comments in what we find and on potential exploitation plans.
   2. give indications of format changes that have been noticed
 
+## TOC
+<!--TOC-->
+
+- [Information on Data Sets](#information-on-data-sets)
+  - [Goal](#goal)
+  - [TOC](#toc)
+    - [From https://www.data.gouv.fr](#from-httpswwwdatagouvfr)
+    - [From https://data.europa.eu/euodp/](#from-httpsdataeuropaeueuodp)
+
+<!--TOC-->
+
 
 ### From https://www.data.gouv.fr
 

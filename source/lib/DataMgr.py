@@ -62,8 +62,9 @@ class UpdateRqt(object):
         FreqObsolete = 4    # check if the file mtime and the frequency imply obsolescence
 
 
-    _validKwds = set( ('reason','fname','url','org', 'checksum','format',
-                    'modDate', 'cachedDate', 'filesize', 'genKey', 'frequency') )
+    _validKwds = set( ('reason','fname','url', 'latest', 'org', 'orgslug',
+                       'checksum', 'format', 'modDate', 'cachedDate', 'filesize',
+                       'genKey', 'frequency') )
         
     def __init__(self, reason, kwdDict):
         bad = set(kwdDict.keys()) - UpdateRqt._validKwds
@@ -268,13 +269,18 @@ class manageAndCacheBase(manageDataFileVersions):
 
         if "dumpMetaFile" in self.options and self.options["dumpMetaFile"]:
             dumpFname = self.options["dumpMetaFile"]
+            dumpFname =  os.path.join(self.dirpath,  self.options["dumpMetaFile"])
             with open(dumpFname,"w") as fd:
-               fd.write(self.data.decode('utf-8'))               
-               fd.close()
-               sys.stderr.write( f"Per options['dumpMetaFile'], wrote data in file {dumpFname}\n" )
+                prettyPrinter = pprint.PrettyPrinter(indent=4)
+                for dataElt in listOrSingleIterator(self.data):
+                    # print(f"dataElt:{type(dataElt)}{dataElt}", file=sys.stderr)
+                    fd.write(prettyPrinter.pformat(dataElt)) 
+                    fd.write("\n")
+                fd.close()
+                sys.stderr.write( f"Per options['dumpMetaFile'], wrote data in file {dumpFname}\n" )
 
         if "dumpMetaInfoFile" in self.options and self.options["dumpMetaInfoFile"]:
-            dumpFname = self.options["dumpMetaInfoFile"]
+            dumpFname =  os.path.join(self.dirpath,  self.options["dumpMetaInfoFile"])
             if hasattr(self, "metadata"):
                 with open(dumpFname,"w") as fd:
                     prettyPrinter = pprint.PrettyPrinter(indent=4)
@@ -333,6 +339,47 @@ class manageAndCacheBase(manageDataFileVersions):
               return self._cacheUpdate(effector=self._getFromRemote)
           else:
               raise RuntimeError(f"Unable to recover enough disk space (req:{updtReq} bytes)")
+
+    def updateSelect(self, **kwargs):
+        """ 
+        Performs selection of update targets by manipulating the `self.updtList`, which
+        contains a list of `UpdateRqt` objects. 
+
+        Criteria and such appear as keyword arguments:
+        - displayCount: number of elements to display, if None display suppressed
+        - URqtSelector: function to return a value logically True for element to be kept
+                        example from  `test_rqt2analyze`
+
+            rex = re.compile('.*sursaud.*')
+            def uselFn(urqt):
+                return rex.match(urqt.fname) or rex.match(urqt.url)
+            
+            mgr = manageAndCacheDataFilesFRAPI(...)
+            mgr.getRemoteInfo(localOnly = True)
+            mgr.updatePrepare()
+            mgr.updateSelect(displayCount=10 ,  URqtSelector = uselFn)
+
+
+        """
+
+        if kwargs.get('URqtSelector') is not None:
+            ulist = [ x for x in self.updtList if kwargs['URqtSelector'](x) ]
+            self.updtList = ulist
+            
+        if kwargs.get('displayCount') is not None:
+            print(f"UpdtList has len: {len(self.updtList)}", file=sys.stderr)
+            ulStr = "\n\t".join( str(x) for x in self.updtList[:kwargs['displayCount']])
+            print(f"UpdtList starts with:\n\t{ulStr}", file=sys.stderr)
+            
+
+    def  printUpdtList(self, itemName, **kwargs):
+        """print the updtList, note that kwargs are transmitted to print, so 
+           file=sys.stdout is a possible kwd argument! 
+        """
+        l = '\n\t'.join( sorted( ( x.__getattr__(itemName) for x in self.updtList)))
+        print(f"Selection: {itemName}:\n\t{l}", **kwargs)
+
+        
     def  cacheSpaceRecovery(self, requiredSpace, keepNFiles=2):
          """
          Walk disk space in self.dirPath, try to recover `requiredSpace`, if true
@@ -473,13 +520,20 @@ class manageAndCacheBase(manageDataFileVersions):
          if remoteDT is None:
              print( f"remoteDT is None for reason:{rqt.reason} fname:{rqt.fname}\n!! !!")
          fullPathname = os.path.join(self.dirpath,rqt.fname)
-         print( f"About to load file {fullPathname}, available space is {self.availOnDisk}")
-         with urllib.request.urlopen(rqt.url) as furl :
-              with open(fullPathname,"wb") as fwr : 
-                   fwr.write(furl.read())
-                   wrSz = fwr.tell()
-         print(f"Wrote file \t'{fullPathname}'\n\tfrom URL:'{rqt.url}'")
-
+         try:
+             print( f"About to load file {fullPathname},"
+                    +f"available space is {self.availOnDisk}")
+             with urllib.request.urlopen(rqt.latest) as furl :
+                  with open(fullPathname,"wb") as fwr : 
+                       fwr.write(furl.read())
+                       wrSz = fwr.tell()
+             print(f"Wrote file \t'{fullPathname}'\n\tfrom URL:'{rqt.latest}'")
+         except Exception as err:
+             print(f"An unexpected error has occurred during http file download\n"
+                   + f"\turl={rqt.latest}\n\tdest.file={fullPathname}\n"
+                   + f"\t{type(err)}\n\t{err}", file = sys.stderr )
+             raise err
+           
          self.availOnDisk -=  wrSz
          if self.availOnDisk < 0:
              print(f"Loading {fullPathname} requires {wrSz} bytes")
@@ -514,7 +568,8 @@ class manageAndCacheBase(manageDataFileVersions):
 
         hOK = hashcode == checksum['value']
         if not hOK:
-            print(f"Bad checksum for {filpath} comp:{hashcode} reference:{checksum['value']}")
+            print(f"Bad checksum (hash type:{hashType}) for {filpath}\n"
+                  +f"\tcomputed:{hashcode}\n\treference:{checksum['value']}")
         return hOK
     
     def _sizeAccounter(self,remoteDT,
@@ -770,33 +825,42 @@ class manageAndCacheDataFiles( manageAndCacheBase):
           inStore =  sorted([  k   for k in self.genDir.values()])
           
           updtList=[]
-          for indata in self.data['data']:
-              for resources in indata['resources']:
-                  fname   = resources['title']
-                  url     = resources['latest']
-                  checksum   = resources['checksum']
-                  format     = resources['format']
-                  modDate = resources['last_modified']
-                  filesize= resources['filesize']
-                  org     = indata['organization']['slug']
-                  if format is None:
-                      print(f"Skipping '{fname}' fmt:{format} mod:{modDate} org='{org}'")
-                      continue
-                  genDate = self.makeGenDate(fname)
-                  if genDate is None:
-                      gen,fdate = (None,None)
-                      reason = UpdateRqt.ReasonCde.NoGeneric # no generic id:filename without timestamp
-                  else:
-                      gen,fdate  = genDate
-                      if gen in self.genDir:
-                          reason = UpdateRqt.ReasonCde.IsNewer
+          for dataDict in listOrSingleIterator(self.data):
+              for indata in dataDict['data']:
+                  for resources in indata['resources']:
+                      fname   = resources['title']
+                      latest  = resources['latest']
+                      url     = resources['url']
+                      checksum   = resources['checksum']
+                      format     = resources['format']
+                      modDate = resources['last_modified']
+                      filesize= resources['filesize']
+                      
+                      org= indata.get('organisation')
+                      
+                      orgslug = org.get('slug') if org is not None else "NONE" 
+                      
+                      if format is None:
+                          print(f"Skipping '{fname}' fmt:{format} mod:{modDate} org='{org}'")
+                          continue
+                      genDate = self.makeGenDate(fname)
+                      if genDate is None:
+                          gen,fdate = (None,None)
+                          reason = UpdateRqt.ReasonCde.NoGeneric # no generic id:filename without timestamp
                       else:
-                          reason = UpdateRqt.ReasonCde.NoLocalCopy
+                          gen,fdate  = genDate
+                          if gen in self.genDir:
+                              reason = UpdateRqt.ReasonCde.IsNewer
+                          else:
+                              reason = UpdateRqt.ReasonCde.NoLocalCopy
 
-                  kd = {'fname':fname, 'url':url, 'org':org, 'checksum':checksum, 
-                	  'format': format,'modDate':modDate,'cachedDate':fdate,
-                          'filesize':filesize,'genKey': gen } 
-                  updtList.append( UpdateRqt(reason, kd))
+                      kd = {'fname':fname,
+                            'url':url, 'latest':latest, 
+                            'org':org, 'orgslug':orgslug,
+                            'checksum':checksum, 'format': format,
+                            'modDate':modDate,'cachedDate':fdate,
+                            'filesize':filesize,'genKey': gen } 
+                      updtList.append( UpdateRqt(reason, kd))
           self.updtList = updtList
 
 
