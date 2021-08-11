@@ -68,11 +68,19 @@ See [README-gallery.md](./README-gallery.md) for more.
    which is cached locally   with  update synchronization with the remote site (automatic, after prescribed time interval)
 - Python modules :
    - manage a local repository with files by handling file version/timestamp in file name. 
-   - automate the transfer of files with located on the remote site:
-     - identified by badge "covid-19" on  <A HREF="doc.data.gouv.fr">doc.data.gouv.fr</A>.
-      This uses the API (`http` based) documented at <A HREF="https://doc.data.gouv.fr/api/reference/#/datasets/list_datasets">
-      https://doc.data.gouv.fr/api/reference/#/datasets/list_datasets </A>
-     - identified by a SPARQL filtering regular expression on  <A HREF="https://data.europa.eu/">https://data.europa.eu/</A>
+     1. This is managed as a cache, where only a specified number of versions
+	    of each file are kept
+	 1. We limit cache size by erasing older versions
+   - automate the transfer of files with information/directories located on the remote site:
+     - identified by badge or tag on  <A HREF="doc.data.gouv.fr">doc.data.gouv.fr</A>.
+      This uses the API (`http` based) documented at 
+	  <A HREF="https://doc.data.gouv.fr/api/reference/#/datasets/list_datasets">
+      https://doc.data.gouv.fr/api/reference/#/datasets/list_datasets </A>.
+	  
+	 - More details in 
+	  [README-Bug-X-DataFr.md](./README-Bug-X-DataFr.md). 
+
+   - identified by a SPARQL filtering regular expression on  <A HREF="https://data.europa.eu/">https://data.europa.eu/</A>
        SPARQL entry point, using the 
    - permit some inquiries on the downmoaded/cached meta data describing the data loaded from the remote site
    - `figureHelpers.py` module:
@@ -82,7 +90,9 @@ See [README-gallery.md](./README-gallery.md) for more.
    
 ### Bugs and changes
   - For more information on changes (and bugs), see the git log.
-  - Concerning the European site ̀data.europa.eu`:
+  - Concerning the French site `data.gouv.fr`, we evolve towards support of a larger
+	subset of the API
+  - Concerning the European site ̀`data.europa.eu`:
     1. an issue has been corrected, see 
         [README-Bug-X-EuRDF.md](./README-Bug-X-EuRDF.md)
     2. Change in format of the data files collected (introducing weekly data) is

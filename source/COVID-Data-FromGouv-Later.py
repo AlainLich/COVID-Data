@@ -546,22 +546,36 @@ cols2 = list(map (lambda x: x+"_F", d2s.columns))
 dm.columns = (*cols1,*cols2)
 
 
+# Reminder of Matplotlib parms:
+# 1. Available markers: 
+# https://matplotlib.org/stable/api/markers_api.html#module-matplotlib.markers
+# 'v', '^', '.', ',', '<', '>', 
+#    '1'-'4'(3 segments around center), '8' (octagon), 'p' (pentagon), 's' (square),
+#    'P' (+ sign), 'h' 'H' (hexagon), '+', 'x', 'X' 
+#    and more...
+# 1. Available colors : abbreviated: 'b', 'g', 'r', 'c', 'm', 'y', 'k', 'w'
+# 1. Available linestyles: https://matplotlib.org/stable/gallery/lines_bars_and_markers/linestyles.html
+#    '-' (solid), '--'(dashed), '.' (dotted) 
+# 
+
 # In[ ]:
 
 
 painter = figureTSFromFrame(dm)
-colOpts = {'dc_F': {"c":"r","marker":"v"},  
-           'dc_M': {"c":"b","marker":"v"},
-           'rea_F': {"c":"r","marker":"o", "linestyle":"--"},  
-           'rea_M': {"c":"b","marker":"o", "linestyle":"--"},
-           'rad_F': {"marker":"+"},
-           'rad_M': {"marker":"+"},
-           'hosp_M':{},
-           'HospConv_M':{},
-           'SSR_USLD_M' :{},
-           'hosp_F':{},
-           'HospConv_F':{},
-           'SSR_USLD_F' :{},
+colOpts = {'dc_F': {"c":"r",  "marker":"v"},  
+           'dc_M': {"c":"b",  "marker":"v"},
+           'rea_F': {"c":"r", "marker":"o", "linestyle":"--"},  
+           'rea_M': {"c":"b", "marker":"o", "linestyle":"--"},
+           'rad_F': {"c":"r", "marker":"+"},
+           'rad_M': {"c":"r", "marker":"+"},
+           'hosp_M':{"c":"b"},
+           'HospConv_M':{'c':'c'},
+           'SSR_USLD_M' :{'c':'c',"marker":'p' },
+           'hosp_F':{'c':'r'},
+           'HospConv_F':{'c':'m'},
+           'SSR_USLD_F' :{'c':'m',"marker":'p'},
+           'autres_M':{'c':'c', "linestyle":":"},
+           'autres_F':{'c':'m', "linestyle":":"}
           }
 painter.doPlotBycol()
 painter.setAttrs(colOpts = colOpts,
@@ -583,18 +597,22 @@ colOpts = {'dc_F': {"c":"r","marker":"v"},
            'rea_M': {"c":"b","marker":"o", "linestyle":"--"},
            'rad_F': {"marker":"+"},
            'rad_M': {"marker":"+"},
-           'hosp_M':{},
-           'HospConv_M':{},
-           'SSR_USLD_M' :{},
-           'hosp_F':{},
-           'HospConv_F':{},
-           'SSR_USLD_F' :{},
+           'hosp_M':{"linestyle":"-"},
+           'HospConv_M':{"linestyle":"-"},
+           'SSR_USLD_M' :{"linestyle":"-"},
+           'hosp_F':{"linestyle":"-"},
+           'HospConv_F':{"linestyle":"-"},
+           'SSR_USLD_F' :{"linestyle":"-"},
+           'autres_M':{"linestyle":"-"},
+           'autres_F':{"linestyle":"-"}
           }
+
 painter.doPlotBycol()
 painter.setAttrs(colOpts = colOpts,
-                    xlabel  = f"Days since {painter.dt[0]}",
+               xlabel  = f"Days since {painter.dt[0]}",
                title="Whole France\ / Hospital\n Male / Female\n:Daily patient status (ICU,Hosp) / Accumulated (dead)",
-               legend=True    ) 
+               legend=True
+                ) 
 display(meta_Hosp[[ "Colonne","Description_EN" ]])
 ImgMgr.save_fig("FIG066")
 
@@ -641,16 +659,13 @@ if len(levAge) != len(ageClasses):
 # In[ ]:
 
 
-colOpts = {'dc':  {"c":"b","marker":"v"},  
-           'rea': {"c":"r","marker":"o", "linestyle":"--"},  
-           'rad':  {"marker":"^"},
-           'hosp': {"marker":"+"}, 
-           'hosp_M':{},
-           'HospConv_M':{},
-           'SSR_USLD_M' :{},
-           'hosp_F':{},
-           'HospConv_F':{},
-           'SSR_USLD_F' :{},
+colOpts = {'dc': {"c":"b","marker":"v"},  
+           'rea': {"c":"b","marker":"o", "linestyle":"--"},
+           'rad': {"c":"r", "marker":"+"},
+           'hosp':{"c":"k", "linestyle":"-"},
+           'HospConv':{"c":"c", "linestyle":"-"},
+           'SSR_USLD' :{"c":"g","linestyle":"-"},
+           'autres':{'c':'m'}
           }
 
 
@@ -841,12 +856,12 @@ ageLabs=['All']+[f"{x-9}-{x}" for x in ageClasses[1:-1]]+["90+"]
 # In[ ]:
 
 
-colOpts = {'nb_test': {"c":"b", "marker":"*"},  
-           'nb_pos':  {"c":"r", "marker":"+"},
-           'nb_test_h': {"c":"b","marker":"o", "linestyle":"--"},  
-           'nb_test_f': {"c":"g","marker":"o", "linestyle":"--"},
-           'nb_pos_h': {"c":"b", "marker":"+"},
-           'nb_pos_f': {"c":"g", "marker":"+"}
+colOpts = {'Tested': {"c":"b", "marker":"*"},  
+           'Positive':  {"c":"r", "marker":"+"},
+           'Tested_h': {"c":"b","marker":"o", "linestyle":"--"},  
+           'Tested_f': {"c":"g","marker":"o", "linestyle":"--"},
+           'Pos_h': {"c":"b", "marker":"+"},
+           'Pos_f': {"c":"g", "marker":"+"}
           }
 
 

@@ -520,12 +520,21 @@ dm.columns = (*cols1,*cols2)
 
 
 painter = figureTSFromFrame(dm)
-colOpts = {'dc_F': {"c":"r","marker":"v"},  
-           'dc_M': {"c":"b","marker":"v"},
-           'rea_F': {"c":"r","marker":"o", "linestyle":"--"},  
-           'rea_M': {"c":"b","marker":"o", "linestyle":"--"},
-           'rad_F': {"marker":"+"},
-           'rad_M': {"marker":"+"}
+
+colOpts = {'dc_F': {"c":"r",  "marker":"v"},  
+           'dc_M': {"c":"b",  "marker":"v"},
+           'rea_F': {"c":"r", "marker":"o", "linestyle":"--"},  
+           'rea_M': {"c":"b", "marker":"o", "linestyle":"--"},
+           'rad_F': {"c":"k", "marker":"+"},
+           'rad_M': {"c":"y", "marker":"+"},
+           'hosp_M':{"c":"b"},
+           'HospConv_M':{'c':'c'},
+           'SSR_USLD_M' :{'c':'c',"marker":'p' },
+           'hosp_F':{'c':'r'},
+           'HospConv_F':{'c':'m'},
+           'SSR_USLD_F' :{'c':'m',"marker":'p'},
+           'autres_M':{'c':'c', "linestyle":":"},
+           'autres_F':{'c':'m', "linestyle":":"}
           }
 painter.doPlotBycol()
 painter.setAttrs(colOpts = colOpts,
@@ -579,10 +588,13 @@ if len(levAge) != len(ageClasses):
 # In[ ]:
 
 
-colOpts = {'dc':  {"c":"b","marker":"v"},  
-           'rea': {"c":"r","marker":"o", "linestyle":"--"},  
-           'rad':  {"marker":"^"},
-           'hosp': {"marker":"+"}
+colOpts = {'dc': {"c":"b","marker":"v"},  
+           'rea': {"c":"b","marker":"o", "linestyle":"--"},
+           'rad': {"c":"r", "marker":"+"},
+           'hosp':{"c":"k", "linestyle":"-"},
+           'HospConv':{"c":"c", "linestyle":"-"},
+           'SSR_USLD' :{"c":"g","linestyle":"-"},
+           'autres':{'c':'m'}
           }
 
 

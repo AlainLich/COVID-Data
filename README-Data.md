@@ -19,7 +19,15 @@ this page enables to:
 
 
 ### From https://www.data.gouv.fr
-
+ - Summer 2021:
+   1. There have been changes (labeling,..), making update by API searching 
+      on `badge`not feasible; however searching  on `tag` and `slug`do work. 
+   1. We have responded by
+      + widening the set of supported API requests, therefore
+        introducing object class `manageAndCacheDataFilesFRAPI`
+	  + adding some interrogation capabilities
+   1. See the tests (file `source/lib/testDataMgr.py` `DGTestFRAPI.*`) 
+      or the example in Jupyter files
  - <B>Change in file names (April 2021)</B>
    The following files have been introduced in replacement
     + sursaud-corona-quot-dep-2021-04-08-21h20.csv 
@@ -31,7 +39,8 @@ this page enables to:
        + concerning the above CSV files the separator was changed to `;`
 
 ### From https://data.europa.eu/euodp/
-
+ - <B>At this time (Summer 2021), access to this site is not supported (due to an
+     issue in the utilisation of the SPARQL access point).</B>
  - <B>Change in data  format</B>:
    + starting 17/12/2020, data started being collected in weekly format, the
      files including weekly data from beginning of 2020. The files are being adapted,

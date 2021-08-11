@@ -105,6 +105,12 @@ class  figureFromFrame(object):
              
         
     def _plotKwd(self,kwdOpts):
+        """ handle keyword parameters pertaining to 
+            - figure (x,y)labels, yscale, title, legend, 
+            - forward keyword parameters that pertain to lines to _doLineAttrs
+            - general documentation (including options) at 
+              https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html
+        """
         # plots an axis label
         if "xlabel" in kwdOpts:
            self.currSub.set_xlabel(kwdOpts["xlabel"]) 
@@ -122,20 +128,37 @@ class  figureFromFrame(object):
 
 
     def _doLineAttrs(self,kwdOpts):       
+        """ handle keyword parameters pertaining to lines
+            - linestyles are documented at:
+               https://matplotlib.org/stable/gallery/lines_bars_and_markers/linestyles.html
+            - markers at 
+              https://matplotlib.org/stable/api/markers_api.html#module-matplotlib.markers
+
+        """
         def assignOpt( kwdOpts, clab, l):
-                if 'colOpts' in kwdOpts:
-                    copDir =  kwdOpts['colOpts']
-                    if  clab in  copDir:
-                         PLT.setp(l,  ** copDir[clab])
-                    else:
-                        diagnHash = hash( (clab, frozenset(copDir.keys())) )
-                        if diagnHash not in self.diagnosticsHash:
-                            print(f"In {type(self)}._doLineAttrs.assignOpt({type(clab)})"
-                                  + f"\n\t{clab} not in {copDir.keys()}", file = sys.stderr)
-                            self.diagnosticsHash[diagnHash]=1
-                        else:
-                            self.diagnosticsHash[diagnHash] += 1
-                            
+            def memoDiagnose(copDir, diagn):
+                "TBD: This function should move to a library and be tested"
+                diagnHash = hash( (clab, frozenset(copDir.keys())) )
+                if diagnHash not in self.diagnosticsHash:
+                    print(diagn, file = sys.stderr)
+                    self.diagnosticsHash[diagnHash]=1
+                else:
+                    self.diagnosticsHash[diagnHash] += 1
+
+            if 'colOpts' in kwdOpts:
+                copDir =  kwdOpts['colOpts']
+                if ( isinstance(copDir, dict)
+                     and any(map(lambda x: len(x)==0, copDir.values()))):
+                    memoDiagnose(copDir, "Not a good idea to have empty colOpts entries")
+                    return
+
+                if  clab in  copDir:
+                     PLT.setp(l,  ** copDir[clab])
+                else:
+                    memoDiagnose(copDir,
+                                 "In {type(self)}._doLineAttrs.assignOpt({type(clab)})"
+                                 + f"\n\t{clab} not in {copDir.keys()}")
+
         cols = self.df.columns
         if self.lines is None:
             pass
@@ -147,7 +170,7 @@ class  figureFromFrame(object):
             count = -1
             for l in self.lines:
                 count += 1
-                p = PLT.getp(l, 'label')
+                #p = PLT.getp(l, 'label')
                 clab =    cols[count]
                 assignOpt( kwdOpts, clab, l)
 
