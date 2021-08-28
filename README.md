@@ -8,7 +8,8 @@
  Are also included some exploitation tools using python's ̀panda`, `matplotlib` and `seaborn` packages. 
  
  Some comments about data found by our automated process and not exploited (yet ?) are
- in [README-Data.md](./README-Data.md).
+ in [README-Data.md](./README-Data.md); we have added some results concerning
+ vaccinations in France in [README-Vaccine.md](./README-Vaccine.md)
  
  Jupyter notebooks included work with COVID-19 / SARS-cov-19
  data provided by :

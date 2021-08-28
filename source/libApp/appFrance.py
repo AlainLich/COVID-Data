@@ -95,3 +95,43 @@ class UrgenceSOSDataFig(object):
         
     
 
+
+# This takes care of making grid of figures from departement data,
+# currently used in COVID-Data-FromGouv-Vaccins.py, it is formalized as a class,
+# it will remain to be seen if general enough or refactoring needed 
+
+class departementFigArrayTSFrame:
+    subplotAdjusts = { 'bottom':0.1, 'top':0.9, 
+                        'wspace':0.4, 'hspace':0.4}
+    def __init__(self,
+                 depIdxIterable=None,
+                 depStats=None,
+                 allData = None, 
+                 subnodeSpec=None, figsize=(15,20), subplotAdjusts={}):
+        self.depIdxIterable = depIdxIterable
+        self.depStats=depStats
+        self.allData = allData
+        self.painterParms = {'subplots' : subnodeSpec,
+                             'figsize' : figsize}
+        self. subplotAdjusts  = departementFigArrayTSFrame.subplotAdjusts | subplotAdjusts
+        
+    def __call__(self, titleStart='', xlabelStart='', ylabel='',
+                 subplotAdjusts = { 'bottom':0.1, 'top':0.9, 
+                                    'wspace':0.4,  'hspace':0.4}):
+
+        painter = figureTSFromFrame(None, **self.painterParms)
+        for ndep in   self.depIdxIterable:
+            departement = self.depStats.iloc[ndep,0]
+            depName, depPopu = (self.depStats.iloc[ndep,i] for i in (1,3))
+            depData = self.allData.loc[(departement,)].copy()        
+            dateStart = depData.index[0]
+            painter.doPlot(df = depData.loc[:,[ "n_cum_dose1_rate",
+                                                     "n_cum_dose2_rate"]])
+            painter.setAttrs(title=f"{titleStart}:\n {depName}",
+                             legend=True,
+                             xlabel=f"{xlabelStart} {dateStart}",
+                             ylabel=f"{ylabel}"   )
+
+            painter.advancePlotIndex()  
+
+        PLT.subplots_adjust( **self.subplotAdjusts)

@@ -19,6 +19,19 @@ this page enables to:
 
 
 ### From https://www.data.gouv.fr
+ - Adding information on vaccination, this is being done in August 2021,
+   1. Overall, this is done in `COVID-Data-FromGouv-Vaccins.ipynb`
+     + this includes a fair amount of technicalities concerning Pandas for 
+	   which 
+	   https://stackoverflow.com/questions/53927460/select-rows-in-pandas-multiindex-dataframe 
+	   has a quite comprehensive explanation on slicing multi-indices...
+	   
+   1. test `DGTestFRAPI.test_rqt7get` has been added to `source/lib/testDataMgr.py`,
+      mostly to check method for discovering the relevant files/data
+	  
+   1. There are numerous remarks on the provided data and how it needs to be prepared in
+      `COVID-Data-FromGouv-Vaccins.ipynb`.
+	  
  - Summer 2021:
    1. There have been changes (labeling,..), making update by API searching 
       on `badge`not feasible; however searching  on `tag` and `slug`do work. 

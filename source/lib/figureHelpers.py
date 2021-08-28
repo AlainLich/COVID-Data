@@ -37,6 +37,11 @@ SNS.set(font_scale=1)
 class  figureFromFrame(object):
     """ Make a figure from a DataFrame; 
         Keywords listed in defaultOpts are honored.
+
+        Note that subplot spacing can be further adjusted by
+        calling 'plt.subplots_adjust' with appropriate parameters,
+        this can be done after figure generation.
+
     """
     defaultOpts = {"figsize":(8.0,6.0),"subplotIndex":1}
     
@@ -227,10 +232,16 @@ class  figureTSFromFrame(figureFromFrame):
           it is expected that the row index are dates in string.
           These are converted into the elapsed days from start of table, and represented
           in DateTime format.
+
           Keywords listed in defaultOpts are honored; 
-              keyword dateTranslate permits to iron out date format inconsistencies,
+          - keyword 'dateTranslate' permits to iron out date format inconsistencies,
                       like when I found in loaded data an index:  
                       "..., '2020-06-28', '2020-06-29', '27/06/2020', '28/06/2020', ...".
+
+         Note that subplot spacing can be further adjusted by
+         calling 'plt.subplots_adjust' with appropriate parameters,
+         this can be done after figure generation.
+
     """
     defaultOpts = {"dateFmt":'%Y-%m-%d',
                    "dateTranslate": True}
@@ -316,6 +327,9 @@ class  figureTSFromFrame(figureFromFrame):
 ##      
 ##      
 ##      painter.advancePlotIndex()
+##
+##  PLT.subplots_adjust( bottom=0.1, top=0.9, 
+##                       wspace=0.4,  hspace=0.4)
 ##  ImgMgr.save_fig("FIG005")          
 ##  ------------------------------------------------------------  END
 

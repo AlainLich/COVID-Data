@@ -394,6 +394,68 @@ if __name__ == "__main__":
             dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
                                                         **DGTestFRAPI.siteOpts, **specOpts )
             dataFileVMgr.getRemoteInfo(localOnly = True)
+
+
+        def test_rqt7get(self):
+            """ Test getting files with vaccination counts
+            """
+            specOpts={ 'CacheValidity': 12*60*60, # normal caching period (seconds)
+                        'cacheFname': '.cache.vaccin.json',
+                       "dumpMetaFile" : "vaccin.meta.dump",
+                       "dumpMetaInfoFile" : "vaccin.metainfo.dump",
+                       'ApiInq'       : 'datasets',
+                       'InqParmsDir'  : {"tag":"covid"},
+                      }
+            
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Try to be more selective
+
+#From dataVaccin/vaccin.meta.dump
+
+#  Fichiers avec le nombre de personnes ayant reçu au moins une dose ou complètement 
+#  vaccinées, arrêté à la dernière date disponible :
+#  - vacsi-tot-fra-YYYY-MM-DD-HHhmm.csv (échelle nationale)
+#  - vacsi-tot-reg-YYYY-MM-DD-HHhmm.csv (échelle régionale)
+#  - vacsi-tot-dep-YYYY-MM-DD-HHhmm.csv (échelle départementale)
+#
+
+#Fichiers avec le nombre quotidien de personnes ayant reçu au moins une dose, 
+#par vaccin, et par date d’injection :
+#  - vacsi-v-fra-YYYY-MM-DD-HHhmm.csv (échelle nationale)
+#  - vacsi-v-reg-YYYY-MM-DD-HHhmm.csv (échelle régionale)
+#  - vacsi-v-dep-YYYY-MM-DD-HHhmm.csv (échelle départementale)
+
+# Les vaccins sont codifiés de la façon suivante : 
+# 0 : Tous vaccins\n'
+# 1 : COMIRNATY Pfizer/BioNTech
+# 2 : Moderna
+# 3 : AstraZeneka
+# 4 : Janssen
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+            rex = re.compile('.*vacsi-v-(fra|reg|dep).*')
+            def uselFn(urqt):
+                return rex.match(urqt.fname) or rex.match(urqt.url)
+
+            
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./dataVaccin",
+                                                        **DGTestFRAPI.siteOpts, **specOpts )
+            dataFileVMgr.getRemoteInfo(localOnly = True)
+            #dataFileVMgr.pprintDataResources(bulk=True)
+            dataFileVMgr.updatePrepare()            
+            dataFileVMgr.updateSelect(displayCount=100 ,  URqtSelector = uselFn)
+            
+            l = '\n\t'.join( x.fname for x in dataFileVMgr.updtList)
+            print(f"Selection: fnames:\n{l}", file=sys.stderr)
+            l = '\n\t'.join( x.url for x in dataFileVMgr.updtList)
+            print(f"Selection: urls:\n{l}", file=sys.stderr)
+
+            dataFileVMgr.printUpdtList('fname') 
+            dataFileVMgr.printUpdtList('url')
+            
+            dataFileVMgr.cacheUpdate()
             
             
     class DGTestEU(unittest.TestCase):
