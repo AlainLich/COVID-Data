@@ -1,15 +1,18 @@
 # Simple Python analysis tools for COVID-19 / SARS-cov-19 data
 
 
- These scripts are intended to facilitate synchronizing with several data
+ These scripts are intended to help analyze data from several 
  sources, including:
-  - data appearing on www.data.gouv.fr (French government Open Data)
+  - <A HREF="http://www.data.gouv.fr">http://www.data.gouv.fr</A> (French government Open Data)
   - data appearing on EU Open Data Portal (EU ODP)  <A HREF="https://data.europa.eu/">https://data.europa.eu/</A>
- Are also included some exploitation tools using python's ̀panda`, `matplotlib` and `seaborn` packages. 
- 
- Some comments about data found by our automated process and not exploited (yet ?) are
- in [README-Data.md](./README-Data.md); we have added some results concerning
- vaccinations in France in [README-Vaccine.md](./README-Vaccine.md)
+  - now obsolete data from USA at  https://covidtracking.com
+  
+ This contains:
+  - a small library for pulling and updating data, managing a cache of
+	the most recent data,
+  - some exploitation tools using python's ̀`pandas`, `matplotlib` and `seaborn` packages,
+  - additional tools based on <A HREF="https://scikit-learn.org/stable/">Scikit Learn</A> 
+  - jupyter notebook(s), 
  
  Jupyter notebooks included work with COVID-19 / SARS-cov-19
  data provided by :
@@ -19,17 +22,11 @@
  - EU Open Data Portal
  - Data for USA from https://covidtracking.com
  
-Mostly this consists of
-- jupyter notebook(s),
-- python scripts, almost direct transpositions of the notebooks. 
-- a small library 
-
 ## TOC
 <!--TOC-->
 
 - [Simple Python analysis tools for COVID-19 / SARS-cov-19 data](#simple-python-analysis-tools-for-covid-19--sars-cov-19-data)
   - [TOC](#toc)
-  - [Aim:](#aim)
   - [Gallery](#gallery)
   - [Functionality](#functionality)
     - [Bugs and changes](#bugs-and-changes)
@@ -43,19 +40,32 @@ Mostly this consists of
 <!--TOC-->
 
 
-## Aim:
-- facilitate to locally manage and update a cache of data
-- facilitate access to that data for analysis and display
-
 ## Gallery
 
-See [README-gallery.md](./README-gallery.md) for more.
+See [README-gallery.md](./README-gallery.md) for more, and  [README-Vaccine.md](./README-Vaccine.md) concerning vaccination data.
 
 <TABLE>
   <TR><TD COLSPAN="1"><CENTER>Comparison between largest 'départements'</CENTER></TD> </TR>
   <TR><TD COLSPAN="1"><CENTER>From 'data.gouv.fr'</CENTER></TD> </TR>
   <TR> <TD> <IMG SRC="./JupySessions/images/Chap01/FIG050.jpg"/></TD> </TR>
+  <TR><TD COLSPAN="1"><CENTER>Vaccination</CENTER></TD> </TR>
+  <TR> <TD> <IMG SRC="./JupySessions/images/Vac01/FIG003.jpg"/></TD> </TR>
+  <TR> <TD> <IMG SRC="./JupySessions/images/Vac01/FIG101.jpg"/></TD> </TR>
+  <TR> <TD> <IMG SRC="./JupySessions/images/Vac01/FIG110.jpg"/></TD> </TR>
 </TABLE>    
+
+<TABLE>
+  <TR><TD COLSPAN="2"><CENTER>Impact of vaccination on hospitalizations and deaths</CENTER></TD> </TR>
+  <TR> 
+    <TD> <IMG SRC="./JupySessions/images/Vac01/FIG211.jpg"/></TD> 
+	<TD> <IMG SRC="./JupySessions/images/Vac01/FIG213.jpg"/></TD> 
+  </TR>
+  <TR> 
+    <TD> <IMG SRC="./JupySessions/images/Vac01/FIG210.jpg"/></TD> 
+	<TD> <IMG SRC="./JupySessions/images/Vac01/FIG214.jpg"/></TD> 
+  </TR>
+</TABLE>    
+
 
 <TABLE>
   <TR><TD COLSPAN="1"><CENTER>Comparison between some European countries</CENTER></TD> </TR>
@@ -83,7 +93,7 @@ See [README-gallery.md](./README-gallery.md) for more.
 
    - identified by a SPARQL filtering regular expression on  <A HREF="https://data.europa.eu/">https://data.europa.eu/</A>
        SPARQL entry point, using the 
-   - permit some inquiries on the downmoaded/cached meta data describing the data loaded from the remote site
+   - permit some inquiries on the downloaded/cached meta data describing the data loaded from the remote site
    - `figureHelpers.py` module:
      - some convenience tools to facilitate/automate making `matplotlib` figures. (Also looking forwards towards ̀seaborn`... after some wait... )
 

@@ -31,6 +31,9 @@ from itertools import cycle
 from time import time
 import datetime
 
+# Heavier debug
+import traceback
+
 # Using pandas
 import pandas as PAN
 
@@ -96,18 +99,29 @@ class UrgenceSOSDataFig(object):
     
 
 
-# This takes care of making grid of figures from departement data,
-# currently used in COVID-Data-FromGouv-Vaccins.py, it is formalized as a class,
-# it will remain to be seen if general enough or refactoring needed 
-
 class departementFigArrayTSFrame:
+    """ This takes care of making grid of figures from departement data,
+        currently used in COVID-Data-FromGouv-Vaccins.py, it is formalized as a class,
+        it will remain to be seen if general enough or refactoring needed 
+    """
+
     subplotAdjusts = { 'bottom':0.1, 'top':0.9, 
                         'wspace':0.4, 'hspace':0.4}
     def __init__(self,
                  depIdxIterable=None,
                  depStats=None,
                  allData = None, 
-                 subnodeSpec=None, figsize=(15,20), subplotAdjusts={}):
+                 subnodeSpec=None,
+                 figsize=(15,20),
+                 subplotAdjusts={},
+                 doDebug = False):
+        """ 
+          Parameters:
+             depIdxIterable :  iterable over selected departements represented 
+                               by integer index starting 0
+             doDebug: permits extended debugging (list departement indices and key)
+        """
+        self.doDebug = doDebug
         self.depIdxIterable = depIdxIterable
         self.depStats=depStats
         self.allData = allData
@@ -123,15 +137,28 @@ class departementFigArrayTSFrame:
         for ndep in   self.depIdxIterable:
             departement = self.depStats.iloc[ndep,0]
             depName, depPopu = (self.depStats.iloc[ndep,i] for i in (1,3))
-            depData = self.allData.loc[(departement,)].copy()        
-            dateStart = depData.index[0]
-            painter.doPlot(df = depData.loc[:,[ "n_cum_dose1_rate",
-                                                     "n_cum_dose2_rate"]])
-            painter.setAttrs(title=f"{titleStart}:\n {depName}",
-                             legend=True,
-                             xlabel=f"{xlabelStart} {dateStart}",
-                             ylabel=f"{ylabel}"   )
+            try :
+                if self.doDebug:
+                    print(f"ndep=({type(ndep)}){ndep}\t"+
+                          f"departement=({type(departement)}){departement}",
+                          file=sys.stderr)
+                depData = self.allData.loc[(departement,)].copy()        
+                dateStart = depData.index[0]
+                painter.doPlot(df = depData.loc[:,[ "n_cum_dose1_rate",
+                                                         "n_cum_dose2_rate"]])
+                painter.setAttrs(title=f"{titleStart}:\n {depName}",
+                                 legend=True,
+                                 xlabel=f"{xlabelStart} {dateStart}",
+                                 ylabel=f"{ylabel}"   )
 
-            painter.advancePlotIndex()  
-
+                painter.advancePlotIndex()  
+            except Exception as err:
+                print(f"An error has occurred for ndep=({type(ndep)}){ndep} "
+                      +f"departement=({type(departement)}){departement}"
+                      +f" {self.depStats.iloc[ndep,1]}"
+                      + f"\n\terror:{err}",
+                      file=sys.stderr)
+                if self.doDebug:
+                    traceback.print_exc()
+                
         PLT.subplots_adjust( **self.subplotAdjusts)

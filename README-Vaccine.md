@@ -79,3 +79,15 @@ indicating `perM` or `perC`
   <TR> <TD> <IMG SRC="./JupySessions/images/Vac01/FIG215.jpg"/></TD> </TR>
 
 </TABLE>    
+
+
+<TABLE>
+  <TR><TD COLSPAN="1"><CENTER>ICU/ Deaths</CENTER></TD> </TR>
+  <TR> <TD> <IMG SRC="./JupySessions/images/Vac01/FIG230.jpg"/></TD>  </TR>
+  <TR><TD COLSPAN="1"><CENTER>ICU/ Hospitalizations</CENTER></TD> </TR>
+  <TR> <TD> <IMG SRC="./JupySessions/images/Vac01/FIG231.jpg"/></TD> </TR>
+  <TR><TD COLSPAN="1"><CENTER>Hospitalizations/ Deaths</CENTER></TD> </TR>
+  <TR> <TD> <IMG SRC="./JupySessions/images/Vac01/FIG232.jpg"/></TD> </TR>
+  <TR><TD COLSPAN="1"><CENTER>All vaccines types, cumulative</CENTER></TD> </TR>
+
+</TABLE>    

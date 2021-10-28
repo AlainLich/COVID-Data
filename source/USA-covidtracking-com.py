@@ -6,7 +6,26 @@
 # 
 # **Note:** This is a Jupyter notebook which is also available as its executable export as a Python 3 script (therefore with automatically generated comments).
 
+# ### Sept 29,2021: Obsolete data
+# Our source https://covidtracking.com/data/api says:
+# - `As of March 7, 2021 we are no longer collecting new data. Learn about available federal data at https://covidtracking.com/analysis-updates/federal-covid-data-101-how-to-find-data.`
+#   - https://covidtracking.com/analysis-updates/simple-covid-data
+#   - https://covidtracking.com/about-data/data-summary
+#   - https://covidtracking.com/about-data/federal-resources
+# 
+# **The following loads and analyses data up to March 7, 2021.**
+
 # # Libraries
+
+# In[ ]:
+
+
+import sys,os
+addPath= [os.path.abspath("../venv/lib/python3.9/site-packages/"),
+          os.path.abspath("../source")]
+addPath.extend(sys.path)
+sys.path = addPath
+
 
 # In[ ]:
 
@@ -124,8 +143,6 @@ ImgMgr = ImageMgr(chapdir="Chap04")
 # Consulted: https://github.com/COVID19Tracking/covid-tracking-api
 #   
 # Downloaded: see `.filespecs.json`
-#   
-#  
 
 # In[ ]:
 

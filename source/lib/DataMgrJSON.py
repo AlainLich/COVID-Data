@@ -191,6 +191,7 @@ class manageAndCacheFilesJSONHandwritten(manageAndCacheDataFilesJSON):
         for indata in self.data['data']:
              updtEnt = { x:None for x in manageAndCacheFilesJSONHandwritten._updtEntryFlds}
              updtEnt['url'] =   indata['page']
+             updtEnt['latest'] =   indata['page']       ## QUICK FIX
              updtEnt['frequency'] = indata['frequency']
              updtEnt['format'] =  indata['type']
              updtEnt['fname'] =  indata['fname']

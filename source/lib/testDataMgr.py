@@ -456,7 +456,71 @@ if __name__ == "__main__":
             dataFileVMgr.printUpdtList('url')
             
             dataFileVMgr.cacheUpdate()
+
+
+    class DGTestFRGeneral(unittest.TestCase):
+        """ Series of test concerning obtaining various forms of information from
+            the French site...
+        """        
+        siteOpts= {"maxDirSz": 100*(2**10)**2}
+        def test_insee_eco(self):
+            """ Test getting files with vaccination counts
+            """
+            specOpts={ 'CacheValidity': 12*60*60, # normal caching period (seconds)
+                        'cacheFname': '.cache.insee.json',
+                       "dumpMetaFile" : "insee.meta.dump",
+                       "dumpMetaInfoFile" : "insee.metainfo.dump",
+                       'ApiInq'       : 'datasets',
+                       'InqParmsDir'  : {"tag":"covid"},
+                      }
+            #### NOTE: NOT FINAL TBD!!!!
+            #
+            # tag to be tried :: 'etat-civil' 'demographie' 'population' 'recensement'
+            # tag economie => aboutit au MINEFI (MEFR ces temps ci!)
+            #
+	    # TAGS to be evaluated from
+            #      https://www.data.gouv.fr/fr/datasets/comptabilite-nationale/
+            # apu
+            # consommation
+            # deficit
+            # depense-publique
+            # dette-publique
+            # emploi
+            # fbcf
+            # finance-publique
+            # pib
+            # pouvoir-d-achat
+            # productivite
+            # valeur-ajoutee
             
+            # PIB
+            #https://www.data.gouv.fr/en/datasets/les-produits-interieurs-bruts-regionaux/
+            #
+            #How to access this systematically??
+            #https://www.insee.fr/fr/statistiques/4277596?sommaire=4318291
+            #
+            rex = re.compile('.*vacsi-v-(fra|reg|dep).*')
+            def uselFn(urqt):
+                return rex.match(urqt.fname) or rex.match(urqt.url)
+
+            
+            dataFileVMgr = manageAndCacheDataFilesFRAPI("./data4debug",
+                                                        **DGTestFRAPI.siteOpts, **specOpts )
+            dataFileVMgr.getRemoteInfo(localOnly = True)
+            #dataFileVMgr.pprintDataResources(bulk=True)
+            dataFileVMgr.updatePrepare()            
+            dataFileVMgr.updateSelect(displayCount=100 ,  URqtSelector = uselFn)
+            
+            l = '\n\t'.join( x.fname for x in dataFileVMgr.updtList)
+            print(f"Selection: fnames:\n{l}", file=sys.stderr)
+            l = '\n\t'.join( x.url for x in dataFileVMgr.updtList)
+            print(f"Selection: urls:\n{l}", file=sys.stderr)
+
+            dataFileVMgr.printUpdtList('fname') 
+            dataFileVMgr.printUpdtList('url')
+            
+            dataFileVMgr.cacheUpdate()
+
             
     class DGTestEU(unittest.TestCase):
         """ First series of test concerns Covid data on European Data portal

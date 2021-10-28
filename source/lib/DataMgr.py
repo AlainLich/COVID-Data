@@ -509,6 +509,9 @@ class manageAndCacheBase(manageDataFileVersions):
                     obsolete = True
                     
                   if obsolete:
+                       # When effector is  _getFromRemote, it is expected that
+                       # there is a field latest in the entry, somehow, this is not
+                       # always the case  (!!! CHECK !!!)
                        effector(datetime.datetime.now(), entry)
                       
               else:
@@ -529,6 +532,7 @@ class manageAndCacheBase(manageDataFileVersions):
                        wrSz = fwr.tell()
              print(f"Wrote file \t'{fullPathname}'\n\tfrom URL:'{rqt.latest}'")
          except Exception as err:
+             print(f"Processing UpdateRqt:{rqt}", file = sys.stderr)
              print(f"An unexpected error has occurred during http file download\n"
                    + f"\turl={rqt.latest}\n\tdest.file={fullPathname}\n"
                    + f"\t{type(err)}\n\t{err}", file = sys.stderr )

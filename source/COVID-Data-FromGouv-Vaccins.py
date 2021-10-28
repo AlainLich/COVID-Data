@@ -5,6 +5,8 @@
 # 
 # **Note:** This is a Jupyter notebook which is also available as its executable export as a Python 3 script (therefore with automatically generated comments).
 
+# **Note: This deals with the painfull reality that "all vaccine type" is not filled for some departements.**
+
 # # Libraries
 
 # This is weird, apparently needed after transitionning to Ubuntu 21.04 Python 3.9.4, 
@@ -14,8 +16,8 @@
 
 
 import sys,os
-addPath= [os.path.abspath("../source"),
-          os.path.abspath("../venv/lib/python3.9/site-packages/")]
+addPath= [os.path.abspath("../venv/lib/python3.9/site-packages/"),
+          os.path.abspath("../source")]
 addPath.extend(sys.path)
 sys.path = addPath
 
@@ -36,10 +38,6 @@ from scipy import linalg
 # Some maths
 from math import sqrt
 
-# Better formatting functions
-from IPython.display import display, HTML
-from IPython import get_ipython
-
 import matplotlib        as MPL
 import matplotlib.pyplot as PLT
 # Add color
@@ -49,6 +47,10 @@ from matplotlib.colors import ListedColormap, LinearSegmentedColormap
 import seaborn as SNS
 SNS.set(font_scale=1)
 
+import mpl_toolkits
+import mpl_toolkits.mplot3d.axes3d
+from mpl_toolkits.mplot3d.axes3d import get_test_data
+
 # Python programming
 from itertools import cycle
 from time import time
@@ -57,6 +59,14 @@ import datetime
 # Using pandas
 import pandas as PAN
 import xlrd
+
+
+# In[ ]:
+
+
+#from sklearn.svm import SVC
+#from sklearn import linear_model
+from sklearn import cluster
 
 
 # In[ ]:
@@ -82,6 +92,8 @@ try:
     from lib.DataMgrJSON   import *
     from lib.DataMgr       import *
     import lib.basicDataCTE as DCTE
+    from lib import figureHelpers as FHelp
+    import libApp.appFrance as appFrance
 except Exception as err:
     print("Could not find library 'lib' with contents 'DataGouvFr' ")
     if get_ipython() is None:
@@ -89,12 +101,6 @@ except Exception as err:
     else:
         print("You are supposed to be running in JupySessions, and '../source/lib' should exist")
     raise err
-
-
-# In[ ]:
-
-
-import libApp.appFrance as appFrance
 
 
 # ## Check environment
@@ -327,15 +333,17 @@ vac0Frf = vacFrf.loc[vacFrf.loc[:,'vaccin']==0,:].set_index("jour")
 
 colOpts = {'n_dose1'  : {"c":"b","marker":"v"},  
            'n_dose2' : {"c":"r","marker":"o", "linestyle":"--"},
+           'n_dose3' : {"c":"g","marker":"<", "linestyle":"--"},
            'n_cum_dose1' : {"c":"b","marker":"+"},
-           'n_cum_dose2': {"c":"r","marker":"*"}
+           'n_cum_dose2': {"c":"r","marker":"*"},
+           'n_cum_dose3': {"c":"g","marker":">"}
           }
 
 
 # In[ ]:
 
 
-dfGr = PAN.DataFrame(vac0Frf.copy(), columns=vac0Frf.columns[4:])
+dfGr = PAN.DataFrame(vac0Frf.copy(), columns=vac0Frf.columns[5:])
 painter = figureTSFromFrame(dfGr,figsize=(12,8))
 painter.doPlot()
 painter.setAttrs(colOpts=colOpts,
@@ -350,7 +358,7 @@ ImgMgr.save_fig("FIG001")
 # In[ ]:
 
 
-dfGr = PAN.DataFrame(vac0Frf.copy(), columns=vac0Frf.columns[2:4])
+dfGr = PAN.DataFrame(vac0Frf.copy(), columns=vac0Frf.columns[2:5])
 painter = figureTSFromFrame(dfGr,figsize=(12,8))
 painter.doPlot()
 painter.setAttrs(colOpts=colOpts,
@@ -400,12 +408,12 @@ subnodeSpec=(lambda i,j:{"nrows":i,"ncols":j})(*subPlotShape(len(vac1GrFrf),maxC
 
 colOpts = {'n_dose1'  : {"c":"b","marker":"v"},  
            'n_dose2' : {"c":"r","marker":"o", "linestyle":"--"},
+           'n_dose3' : {"c":"g","marker":"<", "linestyle":"--"},
            'n_cum_dose1' : {"c":"b","marker":"+"},
-           'n_cum_dose2': {"c":"r","marker":"*"}
+           'n_cum_dose2': {"c":"r","marker":"*"},
+           'n_cum_dose3': {"c":"g","marker":">"}
           }
 
-
-# Et ici on recupere un **splendide bug** dans le fonctionnement de `colSel`
 
 # In[ ]:
 
@@ -413,7 +421,7 @@ colOpts = {'n_dose1'  : {"c":"b","marker":"v"},
 painter = figureTSFromFrame(None, subplots=subnodeSpec, figsize=(15,15))
 for (i, tble) in vac1GrFrf:
     title = f"Vaccine: {vaccNames[i]}"
-    painter.doPlotBycol(tble, colSel=tble.columns[4:]);
+    painter.doPlotBycol(tble, colSel=tble.columns[5:]);
     painter.setAttrs(colOpts = colOpts,
                      xlabel  = f"Days since {painter.dt[0]}",
                      title   = title,
@@ -436,6 +444,19 @@ ImgMgr.save_fig("FIG003")
 
 
 vacDepf = data_dailyDep.copy()
+
+
+# At this date (26/9/21) the "dep" column contains a mix of integer and str encodings, which causes failure down the road (look a merge...); so we correct this
+
+# In[ ]:
+
+
+vacDepf.loc[:,"dep"] = vacDepf.loc[:,"dep"].apply(str) 
+
+
+# In[ ]:
+
+
 vacDepfV=vacDepf.set_index("vaccin")
 
 
@@ -469,12 +490,15 @@ depStats.columns = cols
 depStats.set_index("dep");
 
 
-# Now we perform the merge, and group by date and 'départements': 
+# Now we perform the merge, and group by date and 'départements'.
+# For details on `Pandas.merge`, see 
+#    https://stackoverflow.com/questions/53645882/pandas-merging-101
+# 
 
 # In[ ]:
 
 
-vacMerged = PAN.merge(vacDepf,depStats, on="dep" ) 
+vacMerged = PAN.merge(vacDepf,depStats, how="inner", on="dep" ) 
 vacGrMerged=vacMerged.groupby(["dep","jour","vaccin"]).sum()
 
 
@@ -501,10 +525,28 @@ print(f"vacGrMerged.columns:{vacGrMerged.columns}")
 
 # For now, look at daily statistics normalized by concerned population (unit= event per million people)
 
+# In[ ]:
+
+
+deps=depStats.iloc[:,0]
+deps1=set(vacGrMerged.index.get_level_values(0))
+sdiff = deps1-set(deps)
+sdiffR = set(deps)-deps1
+
+if len(sdiff) > 0:
+    raise RuntimeError (f"Missing departements in depStats (pop stats):{sdiff}")
+
+if len(sdiffR) > 0:
+    raise RuntimeError(f"Non represented departements in vacGrMerged:{sorted(sdiffR)}")
+
+
+# ### Naive approach: assume that `vaccin == 0` is always set
 # Select `vaccin == 0` (all vaccine types), iterate on `dep` (if this is doable
 # on a multi-index, note that `vacGrMerged` is a `pandas.core.frame.DataFrame`.)
 # - https://stackoverflow.com/questions/53927460/select-rows-in-pandas-multiindex-dataframe is quite comprehensive on slicing multi-indices
 # - we select `vaccin == 0` with `loc[slice(None),slice(None),0]` selector
+
+# **ISSUE**: Apparently, for some departements, the vaccin category '0' is missing, therefore cannot use this selection mode... So this was **way too naive...**, and we correct this below.
 
 # In[ ]:
 
@@ -519,9 +561,44 @@ vacAllPanda=vacGrMerged.loc[slice(None),slice(None),0]
 
 deps=depStats.iloc[:,0]
 deps1=set(vacAllPanda.index.get_level_values(0))
-if len(deps) != len(deps1):
-    print(f"len(deps)={len(deps)} != len(deps1)={len(deps1)}")
-assert set(deps.values) == deps1
+sdiff = deps1-set(deps)
+sdiffR = set(deps)-deps1
+
+if len(sdiff) > 0:
+    raise RuntimeError (f"Missing departements in depStats (pop stats):{sdiff}")
+
+if len(sdiffR) > 0:
+    #raise RuntimeError(f"Non represented departements in vacAllPanda:{sorted(sdiffR)}")
+    print(f"Non represented departements in vacAllPanda:{sorted(sdiffR)}",
+         file=sys.stderr)
+
+
+# These are the departements for which the entry "0": all vaccines is missing. We sum for vaccin values $\ne 0$ per (dep,jour) and then add the result the the table.
+
+# In[ ]:
+
+
+if len(sdiffR) > 0:
+    missingLines=vacGrMerged.loc[sdiffR,slice(None),slice(None)]                        .groupby(["dep","jour"])                        .sum()
+    missingLines.loc[:,"vaccin"] = 0 
+    missingLines2= missingLines.set_index("vaccin", append=True)
+
+    print(f"shape before append:{vacGrMerged.shape}")
+    vacGrMerged = vacGrMerged.append(missingLines2)
+    print(f"shape after append:{vacGrMerged.shape}")
+    
+    vacAllPanda=vacGrMerged.loc[slice(None),slice(None),0]
+    deps1=set(vacAllPanda.index.get_level_values(0))
+    
+    sdiff = deps1-set(deps)
+    sdiffR = set(deps)-deps1
+    
+    
+    if len(sdiff) > 0:
+        raise RuntimeError (f"Missing departements in depStats (pop stats):{sdiff}")
+
+    if len(sdiffR) > 0:
+        raise RuntimeError(f"Non represented departements in vacAllPanda:{sorted(sdiffR)}")
 
 
 # In[ ]:
@@ -998,9 +1075,21 @@ ImgMgr.save_fig("FIG201")
 
 
 v=vacDepf.set_index(["vaccin", "dep", "jour"]).loc[0, slice(None),slice(None)]
-lastDays=v.loc["01"].index.values[-nbDaysFilter:]
+try:
+    lastDays=v.loc["01"].index.values[-nbDaysFilter:]
+except KeyError as err:
+    print(f"using dep. selector '01': error {type(err)}:{err}\n\ttrying '1'", 
+          file=sys.stderr)
+    lastDays=v.loc["1"].index.values[-nbDaysFilter:]
+
 print(f"list of lastDays: {lastDays}")
 assert len(lastDays) == nbDaysFilter
+
+
+# In[ ]:
+
+
+v.loc["1"]
 
 
 # In[ ]:
@@ -1120,6 +1209,69 @@ for c in vd.columns[2:]:
 vacDepMerged
 
 
+# In[ ]:
+
+
+vrsv = vacDepMerged.copy()
+vrsv=vrsv.sort_values('incid_dc_perM').copy()
+vrsv.loc[:,'xpos'] = list(range(vrsv.shape[0]))
+
+plt=vrsv.plot(title='Daily deaths per Million people' +'\nper departement',
+             xlabel="departement",
+             kind='scatter',
+             x='xpos',
+             y='incid_dc_perM')
+
+xticks=depStats.loc[ : ,'Nom du département'].iloc[vrsv.index]
+plt.set_xticks(NP.arange(len(xticks)))
+plt.set_xticklabels(xticks, rotation=90, fontsize=3);
+ImgMgr.save_fig("FIG110")
+
+
+# In[ ]:
+
+
+vrsv = vacDepMerged.copy()
+vrsv=vrsv.sort_values('incid_hosp_perM').copy()
+vrsv.loc[:,'xpos'] = list(range(vrsv.shape[0]))
+
+plt=vrsv.plot(title='Daily hospitalizations per Million people' +'\nper departement',
+             xlabel="departement",
+             kind='scatter',
+             x='xpos',
+             y='incid_hosp_perM')
+
+xticks=depStats.loc[ : ,'Nom du département'].iloc[vrsv.index]
+plt.set_xticks(NP.arange(len(xticks)))
+plt.set_xticklabels(xticks, rotation=90, fontsize=3);
+ImgMgr.save_fig("FIG111")
+
+
+# In[ ]:
+
+
+vrsv = vacDepMerged.copy()
+vrsv=vrsv.sort_values('incid_rea_perM').copy()
+vrsv.loc[:,'xpos'] = list(range(vrsv.shape[0]))
+
+plt=vrsv.plot(title='Daily ICU entries per Million people' +'\nper departement',
+             xlabel="departement",
+             kind='scatter',
+             x='xpos',
+             y='incid_rea_perM')
+
+xticks=depStats.loc[ : ,'Nom du département'].iloc[vrsv.index]
+plt.set_xticks(NP.arange(len(xticks)))
+plt.set_xticklabels(xticks, rotation=90, fontsize=3);
+ImgMgr.save_fig("FIG112")
+
+
+# In[ ]:
+
+
+
+
+
 # Matplotlib parametrization:
 # - Use more `matplotlib`related `kwargs`. 
 # - We use a color which conveys information about the departement's population.
@@ -1129,11 +1281,11 @@ vacDepMerged
 # In[ ]:
 
 
-viridis = cm.get_cmap('viridis', 8)
+colormap = cm.get_cmap('brg', 32)
 
 vdm=vacDepMerged
 popRel=vdm.loc[:,'Population totale'] / max(vdm.loc[:,'Population totale'])
-colors=viridis(popRel)
+colors=colormap(popRel)
 size = 2+150*popRel.map(sqrt)
 alpha=0.5
 
@@ -1203,11 +1355,17 @@ plt=vdm.plot( x='incid_dc_perM',
 ImgMgr.save_fig("FIG214")
 
 
-# In[ ]:
+# May be it is clearer in 3D!
+nbClusters=4
+vdm=vacDepMerged
+figAdaptKM = FHelp.FigAdapter_KMeans(fitdata = vdm, nbClusters = nbClusters)
+figSc3D = FHelp.FigFrom3DScatterPlot( adapter = figAdaptKM, data = vdm)
 
-
-import mpl_toolkits.mplot3d.axes3d
-from mpl_toolkits.mplot3d.axes3d import get_test_data
+            # this fits the data and prepares the figure
+figSc3D( xcol="incid_dc_perM",
+         ycol="n_cum_dose2_perC", 
+         zcol='Population totale')
+#PLT.show() #if needed             ## Older version
 
 vdm=vacDepMerged
 fig, ax1 = PLT.subplots(figsize=(8,8))
@@ -1224,6 +1382,242 @@ ax.set_xlabel('Death per Million per Day')
 ax.set_ylabel('Dose2 percentage')
 ax.set_zlabel('Population relative max')
 ImgMgr.save_fig("FIG215")
+# Explore `seaborn`: https://seaborn.pydata.org/examples/index.html
+# - https://seaborn.pydata.org/examples/joint_kde.html
+# - https://seaborn.pydata.org/examples/marginal_ticks.html
+# - https://seaborn.pydata.org/examples/multiple_bivariate_kde.html  **
+# 
+# Concerning KDE plots:
+# - https://seaborn.pydata.org/generated/seaborn.kdeplot.html#seaborn.kdeplot
+# - https://seaborn.pydata.org/tutorial/distributions.html#tutorial-kde ** attempt this!!
+
+# In[ ]:
+
+
+vdm=vacDepMerged
+fig, ax1 = PLT.subplots(1,1,figsize=(8,4))
+SNS.kdeplot(data=vdm, x="incid_dc_perM", y="n_cum_dose2_perC", 
+              ax=ax1)
+plt=vdm.plot( x='incid_dc_perM', 
+              y='n_cum_dose2_perC',
+              s= size.values, c=colors, alpha=alpha,
+              kind='scatter',
+              title='Deaths/Vaccination(dose2)' +
+                    '\nper departement',
+               ax=ax1)
+
+ImgMgr.save_fig("FIG220")
+
+
+# This requires to **cut along the x axis!!**
+
+# #### Regression analysis
+# For the following, regression analysis is interesting!!
+
+# In[ ]:
+
+
+vdm=vacDepMerged
+fig, ax1 = PLT.subplots(1,1,figsize=(8,4))
+
+SNS.regplot(data=vdm, x="incid_dc_perM", y="incid_rea_perM", 
+            truncate=True, robust=True, scatter = False, ax=ax1)
+              
+plt=vdm.plot( x='incid_dc_perM', 
+              y='incid_rea_perM',
+              s= size.values, c=colors, alpha=alpha,
+              kind='scatter',
+              title='Deaths/ICU' +
+                    '\nper departement',
+               ax=ax1)
+
+ImgMgr.save_fig("FIG230")
+
+
+# In[ ]:
+
+
+vdm=vacDepMerged
+fig, ax1 = PLT.subplots(1,1,figsize=(8,4))
+
+SNS.regplot(data=vdm, x="incid_hosp_perM", y="incid_rea_perM", 
+            scatter= False, robust=True,
+            truncate=True, ax=ax1)
+              
+plt=vdm.plot( x='incid_hosp_perM', 
+              y='incid_rea_perM',
+              s= size.values, c=colors, alpha=alpha,
+              kind='scatter',
+              title='Hospitalization/ICU' +
+                    '\nper departement',
+               ax=ax1)
+
+ImgMgr.save_fig("FIG231")
+
+
+# In[ ]:
+
+
+vdm=vacDepMerged
+fig, ax1 = PLT.subplots(1,1,figsize=(8,4))
+
+SNS.regplot(data=vdm, x="incid_hosp_perM", y="incid_dc_perM", 
+            truncate=True, robust=True, ax=ax1, scatter=False)
+              
+plt=vdm.plot( x='incid_hosp_perM', 
+              y='incid_dc_perM',
+              s= size.values, c=colors, alpha=alpha,
+              kind='scatter',
+              title='Hospitalization/Deaths' +
+                    '\nper departement',
+               ax=ax1)
+
+ImgMgr.save_fig("FIG232")
+
+
+# #### Scikit and classification
+# 
+# Let's start with a $k$-means classifier. Actually, seems that most issues lie selecting adequate weights for the features.... Maybe other parameters may be also of interest.
+# 
+# Using explicit names for index selection makes this more robust, as columns are being added to the data (from the data collection site).
+
+# In[ ]:
+
+
+nbClusters=4
+
+colListA = list( list(vacDepMerged.columns).index(s) for s in ('incid_hosp_perM', 'incid_rea_perM', 'incid_dc_perM', 'incid_rad_perM',
+       'n_dose1_perM', 'n_dose2_perM', 'n_cum_dose1_perC', 'n_cum_dose2_perC'))
+colListB = list( list( vacDepMerged.columns).index(s) for s in ('incid_hosp_perM', 'incid_rea_perM', 'incid_dc_perM', 'incid_rad_perM',
+       'n_cum_dose1_perC', 'n_cum_dose2_perC'))
+
+
+# Output the result of the classification... and see
+
+# In[ ]:
+
+
+vdm=vacDepMerged.iloc[:,colListA]
+print(f"Features considered:{vdm.columns.values}")
+
+
+k_means = cluster.KMeans(n_clusters=nbClusters)
+k_means.fit(vdm)
+kolors=colormap((1+k_means.labels_)/(nbClusters+2))
+
+vdm1=vacDepMerged
+fig, ax1 = PLT.subplots(1,1,figsize=(8,4))
+
+SNS.regplot(data=vdm1, x="incid_hosp_perM", y="incid_rea_perM", 
+            scatter= False, robust=True,
+            truncate=True, ax=ax1)
+              
+plt=vdm1.plot( x='incid_hosp_perM', 
+              y='incid_rea_perM',
+              s= size.values, c=kolors, alpha=alpha,
+              kind='scatter',
+              title='Hospitalization/ICU' +
+                    '\nper departement',
+               ax=ax1)
+
+ImgMgr.save_fig("FIG250")
+
+vdm2=vacDepMerged
+fig, ax1 = PLT.subplots(figsize=(8,8))
+ax = fig.add_subplot(1, 1, 1, projection='3d')
+
+x=vdm2.loc[:,"incid_dc_perM"]
+y=vdm2.loc[:,"n_cum_dose2_perC"]
+z=popRel
+
+ax.scatter(x, y, z, c = kolors,s = 2*size, marker="o")
+
+ax.set_xlabel('Death per Million per Day')
+ax.set_ylabel('Dose2 percentage')
+ax.set_zlabel('Population relative max')
+ImgMgr.save_fig("FIG251")
+
+
+# In[ ]:
+
+
+vdm=vacDepMerged.iloc[:,colListB]
+print(f"Features considered:{vdm.columns.values}")
+
+k_means = cluster.KMeans(n_clusters=nbClusters)
+k_means.fit(vdm)
+kolors=colormap((1+k_means.labels_)/(nbClusters+2))
+
+vdm1=vacDepMerged
+fig, ax1 = PLT.subplots(1,1,figsize=(8,4))
+
+SNS.regplot(data=vdm1, x="incid_hosp_perM", y="incid_rea_perM", 
+            scatter= False, robust=True,
+            truncate=True, ax=ax1)
+              
+plt=vdm1.plot( x='incid_hosp_perM', 
+              y='incid_rea_perM',
+              s= size.values, c=kolors, alpha=alpha,
+              kind='scatter',
+              title='Hospitalization/ICU' +
+                    '\nper departement',
+               ax=ax1)
+
+ImgMgr.save_fig("FIG252")
+
+
+# In[ ]:
+
+
+lmeans=[]
+for i in range(nbClusters):
+    mm=vdm.loc[k_means.labels_==i,:].mean()
+    lmeans.append(mm)
+meansDf= PAN.DataFrame(lmeans)
+
+
+# In[ ]:
+
+
+display("Averages per cluster", meansDf)
+
+
+# Now redo this with helper classes from `lib`. Also, using explicit names for index selection makes this more robust, as columns are being added to the data (from the data collection site).
+
+# In[ ]:
+
+
+nbClusters=4
+colListA = list( list(vacDepMerged.columns).index(s) for s in ('incid_hosp_perM', 'incid_rea_perM', 'incid_dc_perM', 'incid_rad_perM',
+       'n_dose1_perM', 'n_dose2_perM', 'n_cum_dose1_perC', 'n_cum_dose2_perC'))
+colListB = list( list( vacDepMerged.columns).index(s) for s in ('incid_hosp_perM', 'incid_rea_perM', 'incid_dc_perM', 'incid_rad_perM',
+       'n_cum_dose1_perC', 'n_cum_dose2_perC'))
+
+
+# In[ ]:
+
+
+vdm1=vacDepMerged.iloc[:,colListB]
+figAdaptKM = FigAdapter_KMeans(fitdata = vdm1, nbClusters = nbClusters)
+figFromRegress= FHelp.FigFromRegressionPlot( adapter = figAdaptKM, data = vdm1)
+
+# this fits the data and prepares the figure
+figFromRegress(xcol="incid_dc_perM",
+                ycol= "incid_rea_perM",
+                title="ICU/Death per Million")
+
+
+# In[ ]:
+
+
+vdm1=vacDepMerged.iloc[:,colListA]
+figAdaptKM = FigAdapter_KMeans(fitdata = vdm1, nbClusters = nbClusters)
+figFromRegress= FHelp.FigFromRegressionPlot( adapter = figAdaptKM, data = vdm1)
+
+# this fits the data and prepares the figure
+figFromRegress(xcol="incid_dc_perM",
+                ycol= "incid_hosp_perM",
+                title="Hospitalizations/Death per Million")
 
 
 # In[ ]:

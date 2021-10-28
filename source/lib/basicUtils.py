@@ -757,6 +757,12 @@ class DataUtilizationMgr(object):
             return s[:nc+p1] + "."*3 + s[ls-nc:]
         return s
 
+    
+#
+#            ------------------------------------------------------------
+#			Format truth values as binary
+#            ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
 
        
 def fmtTrueFalse(v):
@@ -767,6 +773,34 @@ def fmtTrueFalse(v):
          else:
              return "0"
 
-     return "".join(map(fn, v))
+     return"".join(map(fn, v))
 
     
+#
+#            ------------------------------------------------------------
+#			Permutation generation
+#            ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+def permuteGen(l):
+    """
+       Returns a generator for  all permutations of a list of ( distinct ) elements 
+       (need to be put in a  numpy array).  
+    """
+    def transpose(l,i,j):
+        if i == j: return
+        t=l[i]
+        l[i]=l[j]
+        l[j]=t
+        
+    def perm(l,pos,ln):
+        if pos==ln-1:
+            yield l
+        else:    
+            for i in range(pos,ln):
+                transpose(l,i,pos)
+                for p in perm(l,pos+1,ln):
+                    yield p
+                transpose(l,i,pos)
+            
+    for p in perm(NP.array(l),0,len(l)):
+        yield p
